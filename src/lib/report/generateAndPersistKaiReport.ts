@@ -241,7 +241,7 @@ export async function generateAndPersistKaiReport(
           name: p.name,
           score_100: p.score100,
           previous_score_100: prev?.score100 ?? null,
-          ...focusParamMovement(scoreHistory.byReportKey[p.key]),
+          ...focusParamMovement(scoreHistory.byReportKey[p.key], true),
         };
       }),
       environment: environment ?? {},

@@ -35,6 +35,8 @@ export function readKaiReportSnapshot(scores: unknown): KaiReportSnapshot | null
   if (raw.kind !== "initial" && raw.kind !== "update") return null;
   if (!isRecord(raw.report)) return null;
   if (raw.scoreScale !== KAI_REPORT_SCORE_SCALE) return null;
+  // Reports saved before the strict last-scan comparison used a different movement rule: rebuild.
+  if (raw.comparison !== "last_scan_only") return null;
   return {
     kind: raw.kind,
     generatedAt:
@@ -58,6 +60,7 @@ export async function writeKaiReportSnapshot(
   (current as Record<string, unknown>).kaiReportSnapshot = {
     ...snapshot,
     scoreScale: KAI_REPORT_SCORE_SCALE,
+    comparison: "last_scan_only",
   };
   await database
     .update(scans)

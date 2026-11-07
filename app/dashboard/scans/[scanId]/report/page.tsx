@@ -440,8 +440,8 @@ export default async function KaiScanReportPage({
 
   const gradeInfo = scoreToGrade(metrics.overall_score);
   const prevGradeInfo = scoreToGrade(prevMetrics.overall_score);
-  // Overall movement: last scan, else two scans back, else first scan, so slow progress shows.
-  const overallMv = overallMovementFromHistory(scoreHistory.overall);
+  // Overall movement: this scan against the LAST scan only.
+  const overallMv = overallMovementFromHistory(scoreHistory.overall, true);
 
   const treatmentish =
     recentEvent &&
@@ -510,7 +510,7 @@ export default async function KaiScanReportPage({
         name: p.name,
         score_100: p.score100,
         previous_score_100: prev?.score100 ?? null,
-        ...focusParamMovement(scoreHistory.byReportKey[p.key]),
+        ...focusParamMovement(scoreHistory.byReportKey[p.key], true),
       };
     }),
     environment: cityWeather
@@ -556,6 +556,7 @@ export default async function KaiScanReportPage({
     currentScanAt: row.createdAt,
     previousScanAt: previous.createdAt,
     history: scoreHistory.byReportKey,
+    compareToLast: true,
   });
 
   const score100 = String(gradeInfo.score100);
@@ -636,6 +637,20 @@ export default async function KaiScanReportPage({
   const prevRawImages = galleryImages(previous.id, prevFace);
   const currentRawImages = galleryImages(row.id, faceCaptureImages);
 
+  // The slider can also show the FIRST scan. Only offered when it is a different scan from both the
+  // latest and the previous one.
+  const firstId = allScans[0]?.id ?? null;
+  const firstRow =
+    firstId != null && firstId !== row.id && firstId !== previous.id
+      ? await loadScanRow(userId, firstId)
+      : null;
+  const firstRawImages = firstRow
+    ? galleryImages(
+        firstRow.id,
+        ("faceCaptureImages" in firstRow ? firstRow.faceCaptureImages : null) as FaceCaptureRef[] | null
+      )
+    : null;
+
   const shareLine =
     llm?.share_card?.line?.trim() ||
     formatShareLine(weekNumber, score100, mvKind, topConcern);
@@ -659,6 +674,14 @@ export default async function KaiScanReportPage({
           url: centreImageUrl(row.id, currentRawImages),
           date: formatScanDateShort(row.createdAt),
         },
+        ...(firstRow && firstRawImages
+          ? {
+              first: {
+                url: centreImageUrl(firstRow.id, firstRawImages),
+                date: formatScanDateShort(firstRow.createdAt),
+              },
+            }
+          : {}),
       }}
       scanImages={currentImages}
       detectionRegions={parseScanDetectionRegions(row.scores)}

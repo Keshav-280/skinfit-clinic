@@ -35,7 +35,8 @@ export type ScoreChange = {
  */
 export function computeScoreChange(
   points: ScorePoint[],
-  minChange: number = MIN_DETECTABLE_CHANGE
+  minChange: number = MIN_DETECTABLE_CHANGE,
+  opts?: { lastOnly?: boolean }
 ): ScoreChange | null {
   const clean = points.filter((p) => Number.isFinite(p.value));
   const n = clean.length;
@@ -44,6 +45,18 @@ export function computeScoreChange(
   const current = clean[n - 1]!;
   const prev = clean[n - 2]!;
   const lastDelta = Math.round(current.value - prev.value);
+
+  // Report mode: compare the newest scan with the scan just before it, and nothing further back.
+  if (opts?.lastOnly) {
+    const moved = Math.abs(lastDelta) >= minChange;
+    return {
+      direction: moved ? (lastDelta > 0 ? "up" : "down") : "steady",
+      delta: lastDelta,
+      horizon: "last",
+      comparedWith: prev.at.toISOString(),
+      lastDelta,
+    };
+  }
 
   const candidates: Array<{ horizon: ChangeHorizon; base: ScorePoint }> = [
     { horizon: "last", base: prev },

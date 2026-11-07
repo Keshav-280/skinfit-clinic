@@ -93,3 +93,26 @@ describe("formatSignedDelta", () => {
     expect(formatSignedDelta(0)).toBe("0");
   });
 });
+
+describe("last-scan-only comparison (the report's rule)", () => {
+  it("compares only with the scan just before, never looking further back", () => {
+    // 60 -> 61 -> 62 would look "up 2 since two scans back" in the normal mode; last-only is steady.
+    const c = computeScoreChange(series(60, 61, 62), undefined, { lastOnly: true })!;
+    expect(c.direction).toBe("steady");
+    expect(c.horizon).toBe("last");
+    expect(describeScoreChange(c)).toBe("Steady since your last scan");
+  });
+
+  it("reports a real move against the last scan", () => {
+    const up = computeScoreChange(series(60, 62, 66), undefined, { lastOnly: true })!;
+    expect(up.direction).toBe("up");
+    expect(up.delta).toBe(4);
+    const down = computeScoreChange(series(80, 80, 72), undefined, { lastOnly: true })!;
+    expect(down.direction).toBe("down");
+    expect(down.delta).toBe(-8);
+  });
+
+  it("treats exactly 2 points as steady", () => {
+    expect(computeScoreChange(series(60, 62), undefined, { lastOnly: true })!.direction).toBe("steady");
+  });
+});

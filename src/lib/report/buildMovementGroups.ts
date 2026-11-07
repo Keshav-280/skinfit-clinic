@@ -65,13 +65,14 @@ const COMPARED_WITH = {
  * on-screen tags use, so the narrative and the numbers can never disagree.
  */
 export function focusParamMovement(
-  series: ScorePoint[] | undefined
+  series: ScorePoint[] | undefined,
+  lastOnly = false
 ): {
   movement: "improved" | "declined" | "holding" | "baseline";
   change_points: number | null;
   compared_with: (typeof COMPARED_WITH)[keyof typeof COMPARED_WITH] | null;
 } {
-  const change = series ? computeScoreChange(series) : null;
+  const change = series ? computeScoreChange(series, undefined, { lastOnly }) : null;
   if (!change) return { movement: "baseline", change_points: null, compared_with: null };
   return {
     movement:
@@ -98,6 +99,8 @@ export function buildMovementGroups(opts: {
   currentScanAt: Date;
   previousScanAt?: Date;
   history?: Record<string, ScorePoint[]>;
+  /** Compare the current scan with the LAST scan only (the report's rule). */
+  compareToLast?: boolean;
 }): MovementGroups {
   const prevByKey = new Map(opts.previous.map((p) => [p.key, p]));
   const daysSinceFirst = Math.floor(
@@ -116,12 +119,16 @@ export function buildMovementGroups(opts: {
     let change: ScoreChange | null = null;
     const series = opts.history?.[curr.key];
     if (series && series.length >= 2) {
-      change = computeScoreChange(series);
+      change = computeScoreChange(series, undefined, { lastOnly: opts.compareToLast });
     } else if (prev) {
-      change = computeScoreChange([
-        { at: opts.previousScanAt ?? opts.firstScanAt, value: prev.score100 },
-        { at: opts.currentScanAt, value: curr.score100 },
-      ]);
+      change = computeScoreChange(
+        [
+          { at: opts.previousScanAt ?? opts.firstScanAt, value: prev.score100 },
+          { at: opts.currentScanAt, value: curr.score100 },
+        ],
+        undefined,
+        { lastOnly: opts.compareToLast }
+      );
     }
     const moved = change != null && change.direction !== "steady";
 
@@ -199,8 +206,8 @@ export function overallMovementFromScores(
 }
 
 /** Overall movement over the nearest comparison that clears the threshold. */
-export function overallMovementFromHistory(series: ScorePoint[]): MovementKind {
-  const change = computeScoreChange(series);
+export function overallMovementFromHistory(series: ScorePoint[], lastOnly = false): MovementKind {
+  const change = computeScoreChange(series, undefined, { lastOnly });
   return change ? kindFromChange(change) : "holding";
 }
 

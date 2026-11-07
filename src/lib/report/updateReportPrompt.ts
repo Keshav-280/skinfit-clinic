@@ -48,7 +48,7 @@ Visible parameters: active_acne, acne_scars, pigmentation, wrinkles, under_eye, 
 
 ## 5. Movement
 
-Movement is decided in code and arrives in focus_parameters[].movement (improved, declined, holding or baseline), with change_points (signed change in score points) and compared_with (last_scan, two_scans_ago or first_scan). Copy it. Do not recompute it and do not override it.
+Movement is decided in code and arrives in focus_parameters[].movement (improved, declined, holding or baseline), with change_points (signed change in score points) and compared_with (always last_scan in this report: every change is measured against the patient's most recent earlier scan, never further back; say "since your last scan", and when that scan was weeks ago say how long ago, for example "since your scan 26 days ago"). Copy it. Do not recompute it and do not override it.
 
 - improved / declined - the score moved by at least 3 points against the scan named in compared_with. Report it as measured, whatever the usual timescale for that marker. If compared_with is not last_scan, say what it is measured against (for example "up 5 since two scans ago").
 - holding - the score moved by less than 3 points (1 or 2 points is normal scan-to-scan variation, so never call it improved or dipped). Never call a holding score improved or declined.
