@@ -6,7 +6,8 @@ import {
 } from "@/src/lib/report/generateReportContent";
 
 export const runtime = "nodejs";
-export const maxDuration = 25;
+// Writing a report is several AI calls (write, check, rewrite). 25 seconds cut it off. No page calls this route.
+export const maxDuration = 300;
 
 type Body = {
   mode?: "initial" | "update";

@@ -12,6 +12,7 @@ import type {
 } from "@/src/lib/scanDetectionRegions";
 import type { KaiReportParamRow } from "@/src/lib/kaiReportMapping";
 import { ReportShell } from "./ReportShell";
+import { ReportAutoRefresh } from "./ReportAutoRefresh";
 import { ReportHero } from "./ReportHero";
 import { FaceMapSection } from "./FaceMapSection";
 import { ParameterTiles } from "./ParameterTiles";
@@ -50,6 +51,8 @@ export type InitialKaiScanReportProps = {
   doctorName: string;
   /** Report photos already have v18 dashed circles baked in. */
   bakedSpotAnnotations?: boolean;
+  /** The AI is still writing this report in the background. */
+  aiPending?: boolean;
 };
 
 export function InitialKaiScanReport({
@@ -73,6 +76,7 @@ export function InitialKaiScanReport({
   isExistingPatient,
   doctorName,
   bakedSpotAnnotations = false,
+  aiPending = false,
 }: InitialKaiScanReportProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const [concern, setConcern] = useState<ConcernChipId>("all");
@@ -164,6 +168,7 @@ export function InitialKaiScanReport({
   return (
     <>
     <ReportShell reportRef={reportRef}>
+      <ReportAutoRefresh enabled={aiPending} floating />
       <FaceMapSection
         scanImages={scanImages}
         detectionRegions={detectionRegions}

@@ -41,15 +41,11 @@ import {
 import { loadReportScoreHistory } from "../../../../../src/lib/report/reportScoreHistory";
 import { loadWellnessAndWeatherForScan } from "../../../../../src/lib/wellnessWeatherContext";
 import {
-  generateInitialReportContent,
-  generateUpdateReportContent,
   type GeneratedInitialReport,
   type GeneratedUpdateReport,
 } from "../../../../../src/lib/report/generateReportContent";
-import {
-  readKaiReportSnapshot,
-  writeKaiReportSnapshot,
-} from "../../../../../src/lib/report/kaiReportSnapshot";
+import { scheduleReportGeneration } from "../../../../../src/lib/report/reportGenerationQueue";
+import { readKaiReportSnapshot } from "../../../../../src/lib/report/kaiReportSnapshot";
 import {
   buildAttributionCards,
   defaultNextStep,
@@ -299,64 +295,15 @@ export default async function KaiScanReportPage({
     const annotatedByPose = annotatedPhotosForScan(row.scores);
     const scanImages = galleryImages(row.id, faceCaptureImages, annotatedByPose);
 
-    const cachedInitial = readKaiReportSnapshot(row.scores);
+    const cachedInitial = readKaiReportSnapshot(row.scores, { allowStale: true });
     let llm: GeneratedInitialReport | null =
       cachedInitial?.kind === "initial"
         ? (cachedInitial.report as GeneratedInitialReport)
         : null;
     let aiUnavailable = cachedInitial?.kind === "initial" ? cachedInitial.aiUnavailable : false;
 
-    if (!llm) {
-    const generated = await generateInitialReportContent({
-      patient: {
-        first_name: user.name?.split(/\s+/)[0] ?? null,
-        age: user.age,
-        sex: user.gender,
-        skin_type: user.skinType,
-        fitzpatrick: user.fitzpatrick,
-        primary_concern: user.primaryConcern,
-        under_clinic_care: scoresUnlocked,
-      },
-      current_scan: {
-        scan_id: String(row.id),
-        captured_at: row.createdAt.toISOString(),
-        grades: Object.fromEntries(
-          paramRows.map((p) => [
-            p.key,
-            { score_100: p.score100, position: Math.round(p.clarity), severity: p.severity },
-          ])
-        ),
-        overall: gradeInfo,
-      },
-      weekly_checkin: wellness,
-      environment: cityWeather
-        ? {
-            city: cityWeather.city,
-            detected: true,
-            uv_index_peak: cityWeather.uvIndex,
-            humidity_pct_avg: cityWeather.humidity,
-            aqi_avg: cityWeather.aqi,
-            temp_c_avg: cityWeather.tempC,
-            condition: cityWeather.condition,
-          }
-        : null,
-      focus_parameters: paramRows.map((p) => ({
-        key: p.key,
-        name: p.name,
-        score_100: p.score100,
-      })),
-    });
-      llm = generated.report;
-      aiUnavailable = generated.aiUnavailable;
-      if (generated.report) {
-        void writeKaiReportSnapshot(userId, row.id, {
-          kind: "initial",
-          generatedAt: new Date().toISOString(),
-          aiUnavailable: generated.aiUnavailable,
-          report: generated.report,
-        });
-      }
-    }
+    // Never wait for the AI on page load: show what is saved, build the fresh report in the background.
+    if (!llm || cachedInitial?.stale) scheduleReportGeneration(userId, row.id);
 
     const parameters = paramRows;
 
@@ -380,6 +327,7 @@ export default async function KaiScanReportPage({
 
     return (
       <InitialKaiScanReport
+        aiPending={!llm}
         scanId={row.id}
         grade={grade}
         headline={headline}
@@ -451,103 +399,15 @@ export default async function KaiScanReportPage({
       ? recentEvent
       : null;
 
-  const cachedUpdate = readKaiReportSnapshot(row.scores);
+  const cachedUpdate = readKaiReportSnapshot(row.scores, { allowStale: true });
   let llm: GeneratedUpdateReport | null =
     cachedUpdate?.kind === "update"
       ? (cachedUpdate.report as GeneratedUpdateReport)
       : null;
   let aiUnavailable = cachedUpdate?.kind === "update" ? cachedUpdate.aiUnavailable : false;
 
-  if (!llm) {
-  const generated = await generateUpdateReportContent({
-    patient: {
-      first_name: user.name?.split(/\s+/)[0] ?? null,
-      age: user.age,
-      sex: user.gender,
-      skin_type: user.skinType,
-      fitzpatrick: user.fitzpatrick,
-      primary_concern: user.primaryConcern,
-      under_clinic_care: scoresUnlocked,
-    },
-    current_scan: {
-      scan_id: String(row.id),
-      captured_at: row.createdAt.toISOString(),
-      week_number: weekNumber,
-        grades: Object.fromEntries(
-          paramRows.map((p) => [
-            p.key,
-            {
-              score_100: p.score100,
-              position: Math.round(p.clarity),
-              severity: p.severity,
-            },
-          ])
-        ),
-      overall: gradeInfo,
-    },
-    previous_scan: {
-      scan_id: String(previous.id),
-      captured_at: previous.createdAt.toISOString(),
-        grades: Object.fromEntries(
-          prevParamRows.map((p) => [
-            p.key,
-            {
-              score_100: p.score100,
-              position: Math.round(p.clarity),
-              severity: p.severity,
-            },
-          ])
-        ),
-      overall: prevGradeInfo,
-      narrative_summary: previous.aiSummary,
-    },
-    weekly_checkin: wellness,
-    history_patterns: multiWeekInsights.map((i) => i.text),
-    focus_parameters: paramRows.map((p) => {
-      const prev = prevParamRows.find((x) => x.key === p.key);
-      return {
-        key: p.key,
-        name: p.name,
-        score_100: p.score100,
-        previous_score_100: prev?.score100 ?? null,
-        ...focusParamMovement(scoreHistory.byReportKey[p.key], true),
-      };
-    }),
-    environment: cityWeather
-      ? {
-          city: cityWeather.city,
-          detected: true,
-          uv_index_peak: cityWeather.uvIndex,
-          humidity_pct_avg: cityWeather.humidity,
-          aqi_avg: cityWeather.aqi,
-          temp_c_avg: cityWeather.tempC,
-          condition: cityWeather.condition,
-        }
-      : {},
-    clinic_record: {
-      doctor: doctorName,
-      treatments: treatmentish
-        ? [
-            {
-              type: treatmentish.eventKind,
-              title: treatmentish.title,
-              date: format(treatmentish.eventDate, "yyyy-MM-dd"),
-            },
-          ]
-        : [],
-    },
-  });
-    llm = generated.report;
-    aiUnavailable = generated.aiUnavailable;
-    if (generated.report) {
-      void writeKaiReportSnapshot(userId, row.id, {
-        kind: "update",
-        generatedAt: new Date().toISOString(),
-        aiUnavailable: generated.aiUnavailable,
-        report: generated.report,
-      });
-    }
-  }
+  // Never wait for the AI on page load: show what is saved, build the fresh report in the background.
+  if (!llm || cachedUpdate?.stale) scheduleReportGeneration(userId, row.id);
 
   const movementGroups = buildMovementGroups({
     current: paramRows,

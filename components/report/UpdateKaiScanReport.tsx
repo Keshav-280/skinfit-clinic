@@ -15,6 +15,7 @@ import type {
 import { ReportShell } from "./ReportShell";
 import { ReportHero } from "./ReportHero";
 import { ThenNowCompare } from "./ThenNowCompare";
+import { ReportAutoRefresh } from "./ReportAutoRefresh";
 import { FaceMapSection } from "./FaceMapSection";
 import { MovementSection } from "./MovementSection";
 import { AttributionSection } from "./AttributionSection";
@@ -191,11 +192,7 @@ export function UpdateKaiScanReport({
           </Link>
         }
       >
-        {aiUnavailable ? (
-          <p className="rounded-full bg-white px-3 py-1.5 text-center text-[10.5px] tracking-[0.04em] text-[#8B93A4] ring-1 ring-[#E4E6F0]">
-            Score-based draft - AI summary unavailable
-          </p>
-        ) : null}
+        <ReportAutoRefresh enabled={Boolean(aiUnavailable)} />
 
         <div className="report-enter report-enter-d1">
           <ReportHero

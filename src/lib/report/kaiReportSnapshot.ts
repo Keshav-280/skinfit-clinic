@@ -16,6 +16,8 @@ export type KaiReportKind = "initial" | "update";
 export const KAI_REPORT_SCORE_SCALE = 100;
 
 export type KaiReportSnapshot = {
+  /** True when saved under an older comparison rule: still shown, and rebuilt in the background. */
+  stale?: boolean;
   kind: KaiReportKind;
   generatedAt: string;
   aiUnavailable: boolean;
@@ -28,16 +30,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export function readKaiReportSnapshot(scores: unknown): KaiReportSnapshot | null {
+export function readKaiReportSnapshot(
+  scores: unknown,
+  opts?: { allowStale?: boolean }
+): KaiReportSnapshot | null {
   if (!isRecord(scores)) return null;
   const raw = scores.kaiReportSnapshot;
   if (!isRecord(raw)) return null;
   if (raw.kind !== "initial" && raw.kind !== "update") return null;
   if (!isRecord(raw.report)) return null;
   if (raw.scoreScale !== KAI_REPORT_SCORE_SCALE) return null;
-  // Reports saved before the strict last-scan comparison used a different movement rule: rebuild.
-  if (raw.comparison !== "last_scan_only") return null;
+  // Reports saved before the strict last-scan comparison used a different movement rule. They are
+  // still shown (never make the patient wait) and rebuilt in the background.
+  const stale = raw.comparison !== "last_scan_only";
+  if (stale && !opts?.allowStale) return null;
   return {
+    stale,
     kind: raw.kind,
     generatedAt:
       typeof raw.generatedAt === "string" ? raw.generatedAt : new Date().toISOString(),

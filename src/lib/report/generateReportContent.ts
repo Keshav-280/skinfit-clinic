@@ -9,7 +9,9 @@ import {
   writerModel,
 } from "@/src/lib/aiVerified";
 
-const TIMEOUT_MS = 20000;
+// The full-size model writing a long report takes well over 20 seconds. Too short a limit cut off
+// almost every attempt and left reports without any AI text.
+const TIMEOUT_MS = 150_000;
 
 let cachedClient: OpenAI | null = null;
 
@@ -150,6 +152,8 @@ async function chatJsonValidated(system: string, payload: unknown, kind: string)
         kind: `${kind} (a patient report: headline, summary, per-area findings, actions, next step)`,
         data: payload,
         candidate,
+        extraRules:
+          'This report screen already shows every score, point change, date and weekly check-in figure in its own cards. FAIL the candidate if any sentence contains a digit or a number (the only exception is share_card.line), or restates what the screen shows ("your score is", "you slept six to eight hours") instead of adding meaning. FAIL it if two parts say the same thing. It must feel warm, personal and human: like a caring friend, not a data readout.',
       }),
     codeCheck: (candidate) => validateGeneratedReport(candidate, payload),
   });

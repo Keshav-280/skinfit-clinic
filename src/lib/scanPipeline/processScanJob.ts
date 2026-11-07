@@ -49,7 +49,7 @@ import {
   detectScoreOutliers,
   readScoreReview,
 } from "@/src/lib/scoreOutliers";
-import { generateAndPersistKaiReport } from "@/src/lib/report/generateAndPersistKaiReport";
+import { scheduleReportGeneration } from "@/src/lib/report/reportGenerationQueue";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
 import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
@@ -564,24 +564,14 @@ export async function processScanJob(
       )
     );
     await stampScanOrdinal(database, inserted.id);
-    const [snapshotOk, kaiOk] = await Promise.all([
-      persistScanTrackerSnapshot(user.id, inserted.id, database).catch((err) => {
-        logger.warn("tracker_snapshot_skipped", {
-          jobId,
-          scanId: inserted.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return false;
-      }),
-      generateAndPersistKaiReport(user.id, inserted.id).catch((err) => {
-        logger.warn("kai_report_pregenerate_skipped", {
-          jobId,
-          scanId: inserted.id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return false;
-      }),
-    ]);
+    const snapshotOk = await persistScanTrackerSnapshot(user.id, inserted.id, database).catch((err) => {
+      logger.warn("tracker_snapshot_skipped", {
+        jobId,
+        scanId: inserted.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    });
     if (!snapshotOk) {
       logger.warn("tracker_snapshot_missing", {
         jobId,
@@ -589,13 +579,9 @@ export async function processScanJob(
         hint: "scan marked ready; tracker can rebuild on view",
       });
     }
-    if (!kaiOk) {
-      logger.warn("kai_report_not_cached", {
-        jobId,
-        scanId: inserted.id,
-        hint: "report page will generate on first open",
-      });
-    }
+    // The AI report (written, checked, rewritten if needed) can take minutes. Do NOT hold the scan
+    // for it: the scan is marked ready now and the report appears when it is built.
+    scheduleReportGeneration(user.id, inserted.id);
   }
 
   await database.insert(skinScans).values({

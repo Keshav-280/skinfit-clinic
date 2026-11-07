@@ -128,12 +128,12 @@ const inFlight = new Map<string, Promise<LlmConcernInsight | null>>();
 
 /**
  * Returns the saved note, or writes it (write -> AI check -> code check, up to 4 rounds).
- * Writing can take a while, so the page waits at most `waitMs`; if it is not ready it shows nothing
- * for now and the note is saved as soon as it passes, for the next visit.
+ * Writing can take minutes, so by default the page does NOT wait: it shows the saved note if there
+ * is one, otherwise nothing, and the note is written in the background for the next visit.
  */
 export async function getConcernInsight(
   input: Parameters<typeof buildConcernInsight>[0],
-  waitMs = 12_000
+  waitMs = 0
 ): Promise<LlmConcernInsight | null> {
   const cached = readCache(input.scanScores, input.slug, input.scoresUnlocked);
   if (cached) return cached;
@@ -143,6 +143,7 @@ export async function getConcernInsight(
     work = buildConcernInsight(input).finally(() => inFlight.delete(key));
     inFlight.set(key, work);
   }
+  if (waitMs <= 0) return null;
   return Promise.race([
     work,
     new Promise<null>((resolve) => setTimeout(() => resolve(null), waitMs)),
