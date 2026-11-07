@@ -16,7 +16,7 @@ import { productionTextbookRetrieve } from "@/src/lib/ragRetrieve";
 import { filterConsumerEvidence } from "@/src/lib/reportCopyGuard";
 import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 type Cached = LlmConcernInsight & { v: number; unlocked: boolean };
 
@@ -30,12 +30,12 @@ function readCache(
   if (!all || typeof all !== "object") return null;
   const c = (all as Record<string, Cached | undefined>)[slug];
   if (!c || c.v !== CACHE_VERSION || c.unlocked !== unlocked) return null;
-  return typeof c.insight === "string" && typeof c.action === "string"
-    ? { insight: c.insight, action: c.action }
+  return typeof c.insight === "string" && Array.isArray(c.actions) && c.actions.length === 3
+    ? { insight: c.insight, actions: c.actions }
     : null;
 }
 
-export async function getConcernInsight(input: {
+async function buildConcernInsight(input: {
   userId: string;
   scanId: number;
   scanDate: Date;
@@ -121,4 +121,30 @@ export async function getConcernInsight(input: {
   } catch {
     return null;
   }
+}
+
+/** One generation per scan + concern at a time, so repeated visits do not start duplicates. */
+const inFlight = new Map<string, Promise<LlmConcernInsight | null>>();
+
+/**
+ * Returns the saved note, or writes it (write -> AI check -> code check, up to 4 rounds).
+ * Writing can take a while, so the page waits at most `waitMs`; if it is not ready it shows nothing
+ * for now and the note is saved as soon as it passes, for the next visit.
+ */
+export async function getConcernInsight(
+  input: Parameters<typeof buildConcernInsight>[0],
+  waitMs = 12_000
+): Promise<LlmConcernInsight | null> {
+  const cached = readCache(input.scanScores, input.slug, input.scoresUnlocked);
+  if (cached) return cached;
+  const key = `${input.scanId}:${input.slug}:${input.scoresUnlocked}`;
+  let work = inFlight.get(key);
+  if (!work) {
+    work = buildConcernInsight(input).finally(() => inFlight.delete(key));
+    inFlight.set(key, work);
+  }
+  return Promise.race([
+    work,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), waitMs)),
+  ]);
 }

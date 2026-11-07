@@ -26,9 +26,7 @@ import { ScoreTrendChart } from "@/components/dashboard/ScoreTrendChart";
 import { computeScoreChange, describeScoreChange } from "@/src/lib/scoreChange";
 import { getConcernInsight } from "@/src/lib/concernInsight";
 import {
-  buildScoreAnalysis,
   concernRawScore,
-  defaultConcernRecommendations,
   isScorePageSlug,
   scorePageTitle,
   toHundred,
@@ -135,76 +133,25 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     ? presentTrackerReportNarrative(tracker, scoresUnlocked)
     : null;
 
-  const extraLines = (() => {
-    if (!narrative || isOverall) {
-      return isOverall && narrative?.insightText
-        ? [narrative.insightText]
-        : [];
-    }
-    const fromCauses = narrative.causes
-      .map((c) => c.text.replace(/^(Win|Drag|Watch|Environment):\s*/i, ""))
-      .filter((t) => textMentionsConcern(t, slug as SkinConcernSlug));
-    return fromCauses;
-  })();
+  // Every sentence on this screen is written by the AI and checked by a second AI and by code
+  // (see src/lib/aiVerified.ts). If nothing passes, the cards are hidden: no canned text.
+  const personal = latestScan
+    ? await getConcernInsight({
+        userId,
+        scanId: latestScan.id,
+        scanDate: latestScan.createdAt,
+        scanScores: latestScan.scores,
+        slug,
+        concernLabel: displayName,
+        scoresUnlocked,
+        score100: current100,
+        changeNote: describeScoreChange(concernChange),
+        scanCount: history.length,
+      })
+    : null;
 
-  // Personalised note + one weekly action (concern pages only; AI off or invalid text = null).
-  const personal =
-    !isOverall && latestScan
-      ? await getConcernInsight({
-          userId,
-          scanId: latestScan.id,
-          scanDate: latestScan.createdAt,
-          scanScores: latestScan.scores,
-          slug,
-          concernLabel: displayName,
-          scoresUnlocked,
-          score100: current100,
-          changeNote: describeScoreChange(concernChange),
-          scanCount: history.length,
-        })
-      : null;
-
-  const analysisLines = buildScoreAnalysis({
-    title: displayName,
-    slug,
-    current100,
-    previous100,
-    scanCount: history.length,
-    lastScanLabel: latestScan
-      ? format(latestScan.createdAt, "d MMM")
-      : null,
-    extraLines: personal ? [personal.insight] : extraLines,
-    change: concernChange,
-    omitGenericContext: Boolean(personal),
-  });
-
-  const baseRecommendations = (() => {
-    const fallback = defaultConcernRecommendations(slug);
-    if (!narrative) return fallback;
-    if (isOnboardingBaselineFocusActions(narrative.focusActions)) {
-      return fallback;
-    }
-    if (isOverall) {
-      const titles = narrative.focusActions.slice(0, 3).map((a) => a.title);
-      return titles.length > 0 ? titles : fallback;
-    }
-    const matched = narrative.focusActions
-      .filter(
-        (a) =>
-          textMentionsConcern(a.title, slug as SkinConcernSlug) ||
-          textMentionsConcern(a.detail, slug as SkinConcernSlug)
-      )
-      .map((a) => a.title);
-    if (matched.length > 0) return matched;
-    return fallback;
-  })();
-
-  const recommendations = personal
-    ? [
-        personal.action,
-        ...baseRecommendations.filter((r) => r !== personal.action).slice(0, 2),
-      ]
-    : baseRecommendations;
+  const analysisLines: string[] = personal ? [personal.insight] : [];
+  const recommendations: string[] = personal ? personal.actions : [];
 
   const reportHref = latestScan
     ? `/dashboard/scans/${latestScan.id}/report`
@@ -256,6 +203,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
         />
       </section>
 
+      {analysisLines.length > 0 ? (
       <section className="rounded-2xl border border-[#E4E6F0] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#1E1B31]" aria-hidden />
@@ -269,14 +217,15 @@ export default async function ScoreConcernPage({ params }: PageProps) {
           ))}
         </div>
       </section>
+      ) : null}
 
+      {recommendations.length > 0 ? (
       <section className="rounded-2xl border border-[#E4E6F0] bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-3 flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-[#1E1B31]" aria-hidden />
           <h2 className="text-sm font-bold text-[#1E1B31]">Recommendations</h2>
         </div>
-        {recommendations.length > 0 ? (
-          <ul className="space-y-2">
+        <ul className="space-y-2">
             {recommendations.map((rec, i) => (
               <li
                 key={i}
@@ -289,13 +238,9 @@ export default async function ScoreConcernPage({ params }: PageProps) {
                 <span>{rec}</span>
               </li>
             ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-[#6B7280]">
-            Personalized recommendations will appear after your next report.
-          </p>
-        )}
+        </ul>
       </section>
+      ) : null}
 
       <Link
         href={reportHref}

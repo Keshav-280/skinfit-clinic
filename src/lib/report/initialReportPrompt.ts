@@ -17,6 +17,9 @@ Your report is published automatically. Write accurately, specifically, and with
 - End with a clinic action (book Medixora or message their doctor).
 - Occlusions (beard, glasses, makeup) must be stated once, neutrally.
 
+## Wording a drop (important)
+Every score is skin CLARITY: higher is better. So a lower score means the skin got worse in that area, and for Active acne it means MORE breakouts. Never use the words "declined", "decline" or "decreased" for a score. Say what it means for the skin instead, for example "Active acne is 72, down from 80: more breakouts than last time" or "needs attention". For a rise, say "clearer" (for example "Active acne is 85, up from 80: fewer breakouts").
+
 ## Length
 - headline: under 12 words
 - summary: 3-4 sentences

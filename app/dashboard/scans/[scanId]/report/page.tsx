@@ -502,6 +502,7 @@ export default async function KaiScanReportPage({
       narrative_summary: previous.aiSummary,
     },
     weekly_checkin: wellness,
+    history_patterns: multiWeekInsights.map((i) => i.text),
     focus_parameters: paramRows.map((p) => {
       const prev = prevParamRows.find((x) => x.key === p.key);
       return {
@@ -570,7 +571,8 @@ export default async function KaiScanReportPage({
     llm?.overall?.headline?.trim() ||
     defaultUpdateHeadline(score100, paramRows, mvKind);
   const badge = movementToHeroBadge(mvKind);
-  const subtitle = subtitleFromGrades(score100, prevScore100, mvKind);
+  const daysSincePrevious = (row.createdAt.getTime() - previous.createdAt.getTime()) / 86_400_000;
+  const subtitle = subtitleFromGrades(score100, prevScore100, mvKind, daysSincePrevious);
 
   const attributionCards = buildAttributionCards({
     cityWeather,

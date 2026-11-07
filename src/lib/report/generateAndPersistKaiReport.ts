@@ -7,6 +7,7 @@ import { scans, scheduleEvents, users } from "@/src/db/schema";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { buildKaiReportParamRowsFromRag } from "@/src/lib/kaiReportMapping";
 import { scoreToGrade } from "@/src/lib/report/gradeComputation";
+import { computeMultiWeekInsights } from "@/src/lib/multiWeekPatternAnalysis";
 import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 import { scanDisplayResolvedFromRow } from "@/src/lib/resolveScanDisplayScores";
 import {
@@ -232,6 +233,7 @@ export async function generateAndPersistKaiReport(
         narrative_summary: previous.aiSummary,
       },
       weekly_checkin: wellness,
+      history_patterns: (await computeMultiWeekInsights(userId)).map((i) => i.text),
       focus_parameters: paramRows.map((p) => {
         const prev = prevParamRows.find((x) => x.key === p.key);
         return {

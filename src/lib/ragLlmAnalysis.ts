@@ -6,6 +6,13 @@ import {
   numbersAreGrounded,
 } from "@/src/lib/reportCopyGuard";
 import {
+  aiReview,
+  feedbackBrief,
+  runVerified,
+  verifiedClient,
+  writerModel,
+} from "@/src/lib/aiVerified";
+import {
   RAG_KAI_PARAM_LABELS,
   type RagKaiParamKey,
 } from "@/src/lib/ragEightParams";
@@ -672,9 +679,9 @@ export function isLlmEnabled() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
-/** -------- Per-concern insight + weekly action (Score tab, one concern at a time) -------- */
+/** -------- Per-concern note + three steps (Score tab). Written, checked and verified, see aiVerified.ts -------- */
 
-export type LlmConcernInsight = { insight: string; action: string };
+export type LlmConcernInsight = { insight: string; actions: string[] };
 
 export async function analyzeConcernInsight(input: {
   concernLabel: string;
@@ -693,7 +700,8 @@ export async function analyzeConcernInsight(input: {
   cityWeather?: LlmCityWeatherInput | null;
   background: string[];
 }): Promise<LlmConcernInsight | null> {
-  if (!getClient()) return null;
+  const client = verifiedClient();
+  if (!client) return null;
   const band =
     input.score100 == null
       ? "not scored"
@@ -702,15 +710,15 @@ export async function analyzeConcernInsight(input: {
         : lockedQualitativeBand(input.score100);
 
   const system = `You are kAI, the AI skin companion inside My SkinFit (SkinFit Wellness clinic, Bangalore).
-You write a short note for ONE skin concern on the patient's Score screen. Output ONLY a JSON object.
+You write a short note for ONE skin concern on the patient's Score screen, plus three steps for this week. Output ONLY a JSON object.
 ${KAI_REPORT_GUARDRAILS}
-SCALE: higher scores mean clearer, healthier skin. Scores never reach 100.
-DATA RULES: every number you write must appear verbatim in the data below. ${
+SCALE: higher scores mean clearer, healthier skin, so a LOWER score means worse skin in that area (for Active acne, MORE breakouts). Scores never reach 100. Never use the words "declined", "decreased" or "trending down" for a score: say what it means for the skin instead.
+DATA RULES: every number you write must appear verbatim in the data below. A change under 3 points is steady, never an improvement or a dip. ${
     input.scoresUnlocked
       ? ""
       : "The exact score is locked: write no score numbers and no letter grades, only the qualitative word given. "
-  }Never claim measured sun exposure. Never invent findings that are not in the data.
-STYLE: warm, plain, specific to THIS person. No dashes as punctuation. No emojis. Never shame.
+  }Never claim measured sun exposure. Never invent findings that are not in the data. Never name or hint at any illness or condition, and never quote or mention reference material.
+STYLE: warm, plain, specific to THIS person, like a caring clinic coordinator talking to one person. No dashes as punctuation. No emojis. Never shame. Every sentence must be complete.
 If there is only one scan, there is no trend: describe the starting picture and what to focus on, and never say anything moved.`;
 
   const user = `CONCERN: ${input.concernLabel}
@@ -725,26 +733,69 @@ ${formatWellnessBlock(input.wellness)}
 WEATHER
 ${formatCityWeatherBlock(input.cityWeather)}
 
-BACKGROUND (everyday skin-care knowledge, use only if it fits, never quote it)
+BACKGROUND (everyday skin-care knowledge for your understanding only: never quote it, never mention that it exists)
 ${input.background.length ? input.background.map((b) => `- ${b}`).join("\n") : "- none"}
 
 TASK
-Return JSON: {"insight": "...", "action": "..."}
+Return JSON: {"insight": "...", "actions": ["...", "...", "..."]}
 - insight: 1 to 2 short sentences about ${input.concernLabel} for this person, tied to the data above (their reading, change, or this week's habits). 45 words at most.
-- action: exactly one concrete step for THIS week, with a how-often or when. 25 words at most. Everyday habits only: no medicines, doses or prescription products. Start with a verb.`;
+- actions: exactly three different steps for THIS week, each with a how-often or when, 25 words at most each. Everyday habits only: no medicines, doses or prescription products. Each starts with a verb. At least one should connect to something in this week's check-in when it is available.`;
 
-  const out = await callJson<LlmConcernInsight>(system, user, {
-    temperature: 0.4,
+  const write = async (feedback: string[] | null): Promise<LlmConcernInsight | null> => {
+    try {
+      const completion = await client.chat.completions.create({
+        model: writerModel(),
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+          ...(feedback && feedback.length
+            ? [{ role: "user" as const, content: feedbackBrief(feedback) }]
+            : []),
+        ],
+      });
+      const out = JSON.parse(completion.choices[0]?.message?.content ?? "") as {
+        insight?: unknown;
+        actions?: unknown;
+      };
+      if (typeof out.insight !== "string" || !Array.isArray(out.actions)) return null;
+      return {
+        insight: out.insight.trim(),
+        actions: out.actions.filter((x): x is string => typeof x === "string").map((x) => x.trim()),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const codeCheck = (c: LlmConcernInsight): string[] => {
+    const issues: string[] = [];
+    if (!isCleanCopy(c.insight, 320)) issues.push("the note is cut off, too long or has jargon");
+    if (c.actions.length !== 3) issues.push("there must be exactly three steps");
+    for (const act of c.actions) {
+      if (!isCleanCopy(act, 200)) issues.push(`a step is cut off, too long or has jargon: "${act.slice(0, 60)}"`);
+    }
+    const all = [c.insight, ...c.actions].join(" ");
+    if (MEDICAL_ADVICE_TERMS.test(all)) issues.push("it mentions a medicine, dose or prescription product");
+    if (/\bdeclin\w*|\bdecreas\w*|trending down/i.test(all)) issues.push('it uses "declined", "decreased" or "trending down"');
+    if (all.includes("!")) issues.push("it contains an exclamation mark");
+    if (!numbersAreGrounded(all, user)) issues.push("it contains a number that is not in the data");
+    return issues;
+  };
+
+  return runVerified<LlmConcernInsight>({
+    name: `concern:${input.concernLabel}`,
+    generate: write,
+    review: (c) =>
+      aiReview({
+        kind: `a short note and three steps for one skin area (${input.concernLabel}) on the Score screen`,
+        data: user,
+        candidate: c,
+        extraRules: "The note must be 1 to 2 sentences. There must be exactly three different steps, each a concrete everyday habit with a when or how-often.",
+      }),
+    codeCheck,
   });
-  if (!out) return null;
-  const insight = typeof out.insight === "string" ? out.insight.trim() : "";
-  const action = typeof out.action === "string" ? out.action.trim() : "";
-  const ok =
-    isCleanCopy(insight, 320) &&
-    isCleanCopy(action, 200) &&
-    !MEDICAL_ADVICE_TERMS.test(`${insight} ${action}`) &&
-    numbersAreGrounded(`${insight} ${action}`, user);
-  return ok ? { insight, action } : null;
 }
 
 export async function generatePersonalisedAction(input: {

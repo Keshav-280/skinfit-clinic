@@ -2,6 +2,12 @@ import OpenAI from "openai";
 import { INITIAL_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/initialReportPrompt";
 import { UPDATE_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/updateReportPrompt";
 import { validateGeneratedReport } from "@/src/lib/reportCopyGuard";
+import {
+  aiReview,
+  feedbackBrief,
+  runVerified,
+  writerModel,
+} from "@/src/lib/aiVerified";
 
 const TIMEOUT_MS = 20000;
 
@@ -39,7 +45,8 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
 
 async function chatJson(
   system: string,
-  userPayload: unknown
+  userPayload: unknown,
+  feedback: string[] | null = null
 ): Promise<{ data: Record<string, unknown> | null; source: "openai" | "fallback" }> {
   const client = getClient();
   if (!client) return { data: null, source: "fallback" };
@@ -49,8 +56,8 @@ async function chatJson(
   try {
     const completion = await client.chat.completions.create(
       {
-        model: model(),
-        temperature: 0.55,
+        model: writerModel(),
+        temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
@@ -58,6 +65,9 @@ async function chatJson(
             role: "user",
             content: JSON.stringify(userPayload),
           },
+          ...(feedback && feedback.length
+            ? [{ role: "user" as const, content: feedbackBrief(feedback) }]
+            : []),
         ],
       },
       { signal: controller.signal }
@@ -122,27 +132,34 @@ export type GeneratedInitialReport = {
 };
 
 /**
- * Generate, validate, and retry once. A report that still breaks the safety rules is never
- * published: the caller gets "unavailable" and shows its built-in fallback instead.
+ * Layer 1 writes, layer 2 (a second AI) checks, layer 3 (code) checks numbers and wording. Any
+ * failure sends the whole report back to be written again, with the reasons. If no draft passes,
+ * nothing is published and the caller shows no AI report.
  */
-async function chatJsonValidated(system: string, payload: unknown) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { data, source } = await chatJson(system, payload);
-    if (!data) return { data: null, source };
-    const issues = validateGeneratedReport(data, payload);
-    if (issues.length === 0) return { data, source };
-    console.warn("[report] AI output rejected", {
-      attempt,
-      issues: issues.slice(0, 5),
-    });
-  }
-  return { data: null, source: "fallback" as const };
+async function chatJsonValidated(system: string, payload: unknown, kind: string) {
+  let source: "openai" | "fallback" = "fallback";
+  const data = await runVerified<Record<string, unknown>>({
+    name: kind,
+    generate: async (feedback) => {
+      const r = await chatJson(system, payload, feedback);
+      source = r.source;
+      return r.data;
+    },
+    review: (candidate) =>
+      aiReview({
+        kind: `${kind} (a patient report: headline, summary, per-area findings, actions, next step)`,
+        data: payload,
+        candidate,
+      }),
+    codeCheck: (candidate) => validateGeneratedReport(candidate, payload),
+  });
+  return { data, source: data ? source : ("fallback" as const) };
 }
 
 export async function generateUpdateReportContent(
   payload: unknown
 ): Promise<{ report: GeneratedUpdateReport | null; aiUnavailable: boolean }> {
-  const { data, source } = await chatJsonValidated(UPDATE_REPORT_SYSTEM_PROMPT, payload);
+  const { data, source } = await chatJsonValidated(UPDATE_REPORT_SYSTEM_PROMPT, payload, "update-report");
   if (!data) return { report: null, aiUnavailable: true };
   return {
     report: data as GeneratedUpdateReport,
@@ -153,7 +170,7 @@ export async function generateUpdateReportContent(
 export async function generateInitialReportContent(
   payload: unknown
 ): Promise<{ report: GeneratedInitialReport | null; aiUnavailable: boolean }> {
-  const { data, source } = await chatJsonValidated(INITIAL_REPORT_SYSTEM_PROMPT, payload);
+  const { data, source } = await chatJsonValidated(INITIAL_REPORT_SYSTEM_PROMPT, payload, "first-scan-report");
   if (!data) return { report: null, aiUnavailable: true };
   return {
     report: data as GeneratedInitialReport,

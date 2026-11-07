@@ -70,7 +70,7 @@ export function concernRawScore(
 
 const CONCERN_CONTEXT: Record<ScorePageSlug, string> = {
   overall:
-    "Overall is a weighted mix of the six visible parameters. The lowest two usually move this number fastest.",
+    "Your overall score blends your six skin areas. The two lowest areas usually move it the most.",
   "active-acne":
     "Breakouts respond to routine consistency and scan lighting - keep AM/PM logs so the next scan has context.",
   pigmentation:
@@ -91,8 +91,8 @@ const CONCERN_CONTEXT: Record<ScorePageSlug, string> = {
 
 const CONCERN_RECS: Record<ScorePageSlug, string[]> = {
   overall: [
-    "Focus on the two lowest parameter scores first",
-    "Keep weekly check-ins so habits can be matched to score moves",
+    "Start with your two lowest skin areas",
+    "Keep your weekly check-ins so we can link your habits to changes in your score",
     "Scan in the same light and distance each time",
   ],
   "active-acne": [
@@ -159,15 +159,15 @@ export function buildScoreAnalysis(input: {
     input;
 
   if (current100 == null) {
-    lines.push(`No ${title.toLowerCase()} score yet. Take a scan to set a baseline.`);
+    lines.push(`No ${title.toLowerCase()} score yet. Take a scan to get your starting score.`);
     return lines;
   }
 
   if (previous100 == null || scanCount < 2) {
     lines.push(
-      `Baseline ${title.toLowerCase()} is ${current100}/100${
-        lastScanLabel ? ` from ${lastScanLabel}` : ""
-      }. A second scan will show whether this is moving.`
+      `Your first ${title.toLowerCase()} reading is ${current100}/100${
+        lastScanLabel ? ` (${lastScanLabel})` : ""
+      }. Your next scan will show how it is changing.`
     );
   } else {
     // Move smaller than the detectable change is noise, not progress or decline.

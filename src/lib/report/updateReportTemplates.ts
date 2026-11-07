@@ -61,93 +61,37 @@ export function templateWeekHighlight(
   return `You logged ${wellness.sleepHours.trim()} of sleep this week - we'll keep watching how that sits with your markers.`;
 }
 
+/**
+ * "Likely factors" cards. Every card is text the AI wrote and that passed the checks in
+ * aiVerified.ts; code adds no sentences of its own. The weather, treatments, check-in and history
+ * patterns are given to the AI as data, so it can mention them in its own words.
+ * With no AI text there are no cards.
+ */
 export function buildAttributionCards(opts: {
-  cityWeather: CityWeatherData | null;
-  wellness: LlmWellnessCheckinInput | null;
+  cityWeather?: CityWeatherData | null;
+  wellness?: LlmWellnessCheckinInput | null;
   recentTreatmentTitle?: string | null;
   recentTreatmentDate?: string | null;
   llm?: GeneratedUpdateReport | null;
-  /** Real, number-grounded patterns computed from full scan/check-in history — see multiWeekPatternAnalysis.ts. */
   multiWeekInsights?: Array<{ kind: string; text: string }>;
 }): Array<{ label: string; text: string }> {
   const cards: Array<{ label: string; text: string }> = [];
-  const MAX_CARDS = 3;
-
-  // Computed multi-week patterns are strictly more specific than the LLM's
-  // generic weekly attribution — lead with them, but always leave a slot
-  // free for live weather so that context isn't silently dropped.
-  if (opts.multiWeekInsights?.length) {
-    const kindLabel: Record<string, string> = {
-      baseline: "Since your first scan",
-      trend: "What's moving (or not)",
-      checkin_correlation: "What the data shows",
-      comovement: "Pattern across parameters",
-      consistency: "Check-ins vs. stability",
-    };
-    const maxInsightCards = opts.cityWeather ? MAX_CARDS - 1 : MAX_CARDS;
-    for (const insight of opts.multiWeekInsights) {
-      if (cards.length >= maxInsightCards) break;
-      cards.push({
-        label: kindLabel[insight.kind] ?? "Your pattern so far",
-        text: insight.text,
-      });
-    }
+  for (const a of opts.llm?.attribution ?? []) {
+    if (cards.length >= 3) break;
+    const text = a?.text?.trim();
+    if (!text) continue;
+    const factor = (a.factor ?? "").toLowerCase();
+    const label =
+      factor.includes("clinic") || factor.includes("treatment")
+        ? "Your clinic record"
+        : factor.includes("environ") || factor.includes("weather")
+          ? "Your surroundings"
+          : factor.includes("sleep") || factor.includes("stress") || factor.includes("check")
+            ? "Your week"
+            : "Your pattern so far";
+    cards.push({ label: cards.some((c) => c.label === label) ? `${label} (${cards.length + 1})` : label, text });
   }
-
-  if (opts.cityWeather && cards.length < MAX_CARDS) {
-    const w = opts.cityWeather;
-    const aqiBit = w.aqi != null ? ` AQI around ${w.aqi}.` : "";
-    cards.push({
-      label: `${w.city} this week`,
-      text: `${w.city} is reading about ${w.tempC}°C with ${w.humidity}% humidity and UV index ${w.uvIndex} (${w.condition}).${aqiBit} Dry or humid swings often show up as tightness or oiliness before they show as breakouts.`,
-    });
-  }
-
-  if (opts.llm?.attribution?.length && cards.length < MAX_CARDS) {
-    for (const a of opts.llm.attribution) {
-      if (cards.length >= MAX_CARDS) break;
-      if (!a?.text?.trim()) continue;
-      const factor = (a.factor ?? "").toLowerCase();
-      // Weather is already covered above with live, sourced numbers — skip
-      // the LLM's own (unsourced) take on it to avoid a duplicate card.
-      if (factor.includes("environ") || factor.includes("weather")) continue;
-      const label =
-        factor.includes("clinic") || factor.includes("treatment")
-          ? "Your clinic record"
-          : "Your pattern so far";
-      cards.push({ label, text: a.text.trim() });
-    }
-  }
-
-  if (opts.recentTreatmentTitle && cards.length < MAX_CARDS) {
-    const when = opts.recentTreatmentDate
-      ? ` (${opts.recentTreatmentDate})`
-      : "";
-    cards.push({
-      label: "Your clinic record",
-      text: `Your recent plan includes “${opts.recentTreatmentTitle}”${when}. If you're still settling after a clinic treatment, mild texture or flaking can read as change without meaning damage.`,
-    });
-  }
-
-  if (opts.wellness && cards.length < MAX_CARDS) {
-    const sleep = opts.wellness.sleepHours?.trim();
-    const stress = stressLabel(opts.wellness.stressLevel);
-    if (sleep) {
-      cards.push({
-        label: "Your pattern so far",
-        text: `This week you logged ${sleep} of sleep and stress as ${stress.toLowerCase()}. We'll keep pairing these with the markers that move on a weekly cycle - it's a pattern to watch, not a conclusion.`,
-      });
-    }
-  }
-
-  if (cards.length === 0) {
-    cards.push({
-      label: "Your pattern so far",
-      text: "Complete your weekly check-ins to see patterns here.",
-    });
-  }
-
-  return cards.slice(0, MAX_CARDS);
+  return cards;
 }
 
 export function defaultUpdateActions(opts: {

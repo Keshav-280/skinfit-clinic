@@ -124,6 +124,7 @@ export function validateGeneratedReport(report: unknown, payload: unknown): stri
     if (NON_CONSUMER_TERMS.test(t)) issues.push(`clinical jargon in ${key}`);
     if (/\bgrade\s+[A-E][+-]?\b/i.test(t)) issues.push(`letter grade in ${key}`);
     if (t.includes("!")) issues.push(`exclamation mark in ${key}`);
+    if (/\bdeclin\w*|\bdecreas\w*/i.test(t)) issues.push(`ambiguous word (declined) in ${key}`);
     if (SENTENCE_KEYS.has(key) && t.length > 30 && !/[.!?]["')\]]?$/.test(t)) {
       issues.push(`unfinished sentence in ${key}`);
     }
