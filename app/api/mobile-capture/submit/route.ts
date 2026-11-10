@@ -58,6 +58,7 @@ import {
   FACE_IDENTITY_ERROR_CODES,
 } from "@/src/lib/scanFaceIdentityGate";
 import { fileForMlInference } from "@/src/lib/cropScanImageForMl";
+import { parseCaptureMeta } from "@/src/lib/captureMeta";
 import { parseCaptureCropContext } from "@/src/lib/parseCaptureCropContext";
 
 function isMissingFaceCaptureColumn(error: unknown): boolean {
@@ -374,6 +375,7 @@ export async function POST(request: NextRequest) {
     }
 
     const captureCropContext = parseCaptureCropContext(formData);
+    const captureMeta = parseCaptureMeta(formData);
     for (const step of FACE_SCAN_CAPTURE_STEPS) {
       filesForV2[step.id] = await fileForMlInference(
         filesForV2[step.id],
@@ -753,6 +755,7 @@ export async function POST(request: NextRequest) {
         ...(detection_regions && detection_regions.length > 0
           ? { detection_regions }
           : {}),
+        ...(captureMeta ? { captureMeta } : {}),
         ...(detection_regions_by_pose &&
         Object.keys(detection_regions_by_pose).length > 0
           ? { detection_regions_by_pose }
@@ -877,6 +880,7 @@ export async function POST(request: NextRequest) {
       ...(detection_regions && detection_regions.length > 0
         ? { detection_regions }
         : {}),
+      ...(captureMeta ? { captureMeta } : {}),
       ...(detection_regions_by_pose &&
       Object.keys(detection_regions_by_pose).length > 0
         ? { detection_regions_by_pose }

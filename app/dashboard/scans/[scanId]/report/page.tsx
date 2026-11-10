@@ -52,7 +52,6 @@ import {
   defaultUpdateHeadline,
   formatScanDateShort,
   formatShareLine,
-  templateWeekHighlight,
   weekRecapFromWellness,
 } from "../../../../../src/lib/report/updateReportTemplates";
 import { coalesceFocusActions } from "../../../../../src/lib/report/reportFocusActions";
@@ -279,7 +278,8 @@ export default async function KaiScanReportPage({
     : null;
   const { wellness, cityWeather } = wellnessWeather;
 
-  const doctorName = "Dr. Ruby";
+  // The report never names a doctor.
+  const doctorName = "your doctor";
   const faceCaptureImages =
     ("faceCaptureImages" in row ? row.faceCaptureImages : null) as
       | FaceCaptureRef[]
@@ -305,7 +305,13 @@ export default async function KaiScanReportPage({
     // Never wait for the AI on page load: show what is saved, build the fresh report in the background.
     if (!llm || cachedInitial?.stale) scheduleReportGeneration(userId, row.id);
 
-    const parameters = paramRows;
+    // The note under each skin area is the AI's own. Areas the AI did not write about show no note.
+    const aiFindings = new Map(
+    (llm?.parameters ?? []).flatMap((p) =>
+      p.key && p.finding?.trim() ? [[p.key, p.finding.trim()] as const] : []
+    )
+  );
+    const parameters = paramRows.map((r) => ({ ...r, finding: aiFindings.get(r.key) ?? "" }));
 
     const headline =
       llm?.overall?.headline?.trim() ||
@@ -314,7 +320,7 @@ export default async function KaiScanReportPage({
     const synthesis =
       llm?.summary?.trim() ||
       row.aiSummary?.trim() ||
-      `This baseline centres on ${topConcern.toLowerCase()}. On Indian skin, that pattern is often driven by a mix of UV, barrier stress and routine inconsistency - your next scans will show whether the plan is holding.`;
+      `Your first scan centres on ${topConcern.toLowerCase()}. On Indian skin, that pattern is often driven by a mix of UV, barrier stress and routine inconsistency - your next scans will show whether the plan is holding.`;
     const actions = coalesceFocusActions({
       llmActions: llm?.actions,
       rows: paramRows,
@@ -335,7 +341,7 @@ export default async function KaiScanReportPage({
         position={position}
         subtitle={`${markerCount} marker${markerCount === 1 ? "" : "s"} mapped`}
         synthesis={synthesis}
-        baselineBody={`${markerCount} marker${markerCount === 1 ? "" : "s"} ${markerCount === 1 ? "is" : "are"} now fixed against this capture. Next week’s scan measures the same points. Stability in week one is a good result - it means the baseline held.`}
+        baselineBody={`${markerCount} marker${markerCount === 1 ? "" : "s"} ${markerCount === 1 ? "is" : "are"} now fixed against this capture. Next week’s scan measures the same points. Stability in week one is a good result - it means your starting point held.`}
         actions={actions}
         parameters={parameters}
         scanImages={scanImages}
@@ -409,6 +415,13 @@ export default async function KaiScanReportPage({
   // Never wait for the AI on page load: show what is saved, build the fresh report in the background.
   if (!llm || cachedUpdate?.stale) scheduleReportGeneration(userId, row.id);
 
+  // The note under each skin area is the AI's own. Areas the AI did not write about show no note.
+  const aiFindings = new Map(
+    (llm?.parameters ?? []).flatMap((p) =>
+      p.key && p.finding?.trim() ? [[p.key, p.finding.trim()] as const] : []
+    )
+  );
+
   const movementGroups = buildMovementGroups({
     current: paramRows,
     previous: prevParamRows,
@@ -446,25 +459,10 @@ export default async function KaiScanReportPage({
     multiWeekInsights,
   });
 
-  const weekRecap =
-    llm?.week_recap &&
-    (llm.week_recap.sleep || llm.week_recap.stress || llm.week_recap.water)
-      ? [
-          { label: "Sleep", value: llm.week_recap.sleep || "-" },
-          { label: "Stress", value: llm.week_recap.stress || "-" },
-          {
-            label: "Water",
-            value: llm.week_recap.water || "-",
-          },
-          {
-            label: "Routine",
-            value: llm.week_recap.routine_adherence || "-",
-          },
-        ]
-      : weekRecapFromWellness(wellness);
-
-  const weekHighlight =
-    llm?.week_recap?.highlight?.trim() || templateWeekHighlight(wellness);
+  // The four boxes are the patient's own check-in figures (a dash when there is no check-in).
+  // The line under them is written by the AI; with no AI line nothing is shown, never fixed text.
+  const weekRecap = weekRecapFromWellness(wellness);
+  const weekHighlight = llm?.week_recap?.highlight?.trim() || "";
 
   const actions = coalesceFocusActions({
     llmActions: llm?.actions,
@@ -555,7 +553,7 @@ export default async function KaiScanReportPage({
         hydration: metrics.hydration,
         texture: metrics.texture,
       })}
-      parameters={paramRows}
+      parameters={paramRows.map((r) => ({ ...r, finding: aiFindings.get(r.key) ?? "" }))}
       movementGroups={movementGroups}
       attributionCards={attributionCards}
       weekRecap={weekRecap}

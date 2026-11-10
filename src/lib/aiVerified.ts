@@ -53,7 +53,7 @@ Fail the candidate if ANY of these is true:
 8. It is cold, mechanical, templated, shaming, alarming, or uses jargon, or it reads as if it were not written about THIS patient. It should sound like a warm, caring clinic coordinator speaking plainly to one person.
 9. It gives advice that is unsafe or off-limits for a non-doctor: it must send the patient to the clinic for anything medical or worrying.
 10. It contains emojis, exclamation marks, or says anything about internal SkinFit business.
-11. It repeats what the patient can already see on the same screen (any score, number, point change, date, or check-in figure), or says the same thing in two places. Text should ADD meaning (why, what it means, what to do), never restate the screen.
+11. It repeats what the patient can already see on the same screen (it merely lists scores, point changes, dates or check-in figures), or says the same thing in two places. A number is fine only where the rules for that kind of text allow it. Text should ADD meaning (why, what it means, what to do), never restate the screen.
 
 Reply with ONLY JSON: {"pass": true|false, "issues": ["each specific problem, quoting the words"]}. If it passes, issues must be [].`;
 

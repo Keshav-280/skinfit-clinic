@@ -9,6 +9,7 @@ import {
   buildScanImagesFromPaths,
   parseImagePathsField,
 } from "@/src/lib/scanSubmitPayload";
+import { parseCaptureMeta } from "@/src/lib/captureMeta";
 import { parseCaptureCropContext } from "@/src/lib/parseCaptureCropContext";
 import {
   getScanAnalysisQueue,
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
   }
 
   const captureCropContext = parseCaptureCropContext(formData);
+  const captureMeta = parseCaptureMeta(formData);
   const mobileSessionIdRaw = formData.get("mobileSessionId");
   const mobileSessionId =
     typeof mobileSessionIdRaw === "string" && mobileSessionIdRaw.trim()
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
     faceCaptureImages,
     primaryImageUrl,
     captureCropContext,
+    ...(captureMeta ? { captureMeta } : {}),
     ...(mobileSessionId ? { mobileSessionId } : {}),
     identityVerifiedAt: new Date().toISOString(),
   };

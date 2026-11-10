@@ -332,12 +332,12 @@
         {
           "type": "present",
           "file": "src/lib/report/initialReportPrompt.ts",
-          "pattern": "KAI_REPORT_GUARDRAILS"
+          "pattern": "KAI_REPORT_HOUSE_RULES"
         },
         {
           "type": "present",
           "file": "src/lib/report/updateReportPrompt.ts",
-          "pattern": "KAI_REPORT_GUARDRAILS"
+          "pattern": "KAI_REPORT_HOUSE_RULES"
         },
         {
           "type": "present",
@@ -346,15 +346,29 @@
         },
         {
           "type": "max-count",
-          "pattern": "\\$\\{KAI_REPORT_GUARDRAILS\\}",
+          "pattern": "\\$\\{KAI_REPORT_HOUSE_RULES\\}",
           "file": "src/lib/report/updateReportPrompt.ts",
           "max": 1
         },
         {
           "type": "max-count",
-          "pattern": "\\$\\{KAI_REPORT_GUARDRAILS\\}",
+          "pattern": "\\$\\{KAI_REPORT_HOUSE_RULES\\}",
           "file": "src/lib/report/initialReportPrompt.ts",
           "max": 1
+        },
+        {
+          "type": "file-exists",
+          "file": "src/lib/report/houseRules.ts"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/houseRules.ts",
+          "pattern": "A CALM FRIEND WHO KNOWS SKINCARE"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/houseRules.ts",
+          "pattern": "INGREDIENTS AND PRODUCTS: NEVER"
         }
       ]
     },
@@ -739,7 +753,7 @@
     },
     {
       "id": "REPORT-DEPTH-AND-TIMEOUTS",
-      "title": "Reports are genuinely informative (summary 5-7 sentences, findings 2-3 sentences, 3-5 factors) and the AI time limits fit the full-size model so reports are not left without AI text",
+      "title": "Reports are informative but short (summary 60-80 words, area notes 1-2 sentences, action details 2-3 sentences) and the AI time limits fit the full-size model so reports are not left without AI text",
       "source": "7 Nov: 'the report is giving very less info ... weak if we claim insights'; screenshot showed 'AI summary unavailable'",
       "checks": [
         {
@@ -755,12 +769,12 @@
         {
           "type": "present",
           "file": "src/lib/report/updateReportPrompt.ts",
-          "pattern": "summary 5-7 sentences"
+          "pattern": "summary \\(60 to 80 words"
         },
         {
           "type": "present",
           "file": "src/lib/report/initialReportPrompt.ts",
-          "pattern": "summary: 5-7 sentences"
+          "pattern": "summary \\(60 to 80 words"
         },
         {
           "type": "present",
@@ -783,18 +797,18 @@
     },
     {
       "id": "WARM-NO-REPEAT",
-      "title": "AI report text is warm and human and never repeats numbers or data already visible elsewhere on the screen (no digits in sentences)",
+      "title": "AI report text is warm and human and does not repeat figures already on the screen: digits only in the summary (max two, from the data) and in action details; headline, findings, factors, recap and next step use words only",
       "source": "7 Nov: 'the AI section should have warmth and should not repeat the numbers or data already visible somewhere else in the report'",
       "checks": [
         {
           "type": "present",
           "file": "src/lib/report/updateReportPrompt.ts",
-          "pattern": "Warmth and no repetition"
+          "pattern": "Numbers and no repetition"
         },
         {
           "type": "present",
           "file": "src/lib/report/initialReportPrompt.ts",
-          "pattern": "Warmth and no repetition"
+          "pattern": "Numbers and no repetition"
         },
         {
           "type": "present",
@@ -804,7 +818,7 @@
         {
           "type": "present",
           "file": "src/lib/report/generateReportContent.ts",
-          "pattern": "contains a digit or a number"
+          "pattern": "numbers are rationed"
         },
         {
           "type": "present",
@@ -832,6 +846,374 @@
         {
           "type": "manual",
           "how": "Read three real AI reports after deploy (first scan, a dip, a steady one): warm, human, no numbers, nothing the screen already shows. The weekly tracker text (src/lib/ragPatientTrackerReport.ts) still quotes scores; confirm with the founder whether it should follow the same rule."
+        }
+      ]
+    },
+    {
+      "id": "WORDING-PLAIN",
+      "title": "Patient screens never use 'baseline' or 'parameter' (say 'starting point' / 'skin area'); report cards are AI-written",
+      "source": "Open items #2: technical wording on the report screen; decided: the AI writes those cards",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "this baseline|baseline held|kAI baseline|This baseline",
+          "paths": [
+            "app/dashboard",
+            "components/report"
+          ],
+          "exclude": []
+        }
+      ]
+    },
+    {
+      "id": "PROMPT-PERSONAL-INPUTS",
+      "title": "Both report prompts receive the patient's first name, skin type, main concern and main goal, and are told to open with the name, mention skin type once and start from their concern (skip any that is missing, never guess)",
+      "source": "Open items #3 / Prompt inputs rows 1-3",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/generateAndPersistKaiReport.ts",
+          "pattern": "main_goal: user\\.primaryGoal"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateAndPersistKaiReport.ts",
+          "pattern": "first_name: user\\.name"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "Hi <first name>"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "Hi <first name>"
+        },
+        {
+          "type": "manual",
+          "how": "After deploy, run the query that counts how many patients have primary_concern vs primary_goal filled, to confirm the right field(s) are used."
+        }
+      ]
+    },
+    {
+      "id": "AREA-NOTES-FROM-AI",
+      "title": "The note under each skin area is written by the AI (focus area plus biggest movers, at most three); areas without an AI note show no note, never a fixed sentence",
+      "source": "Open items #4 and 'no text from code'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "aiFindings"
+        },
+        {
+          "type": "absent",
+          "pattern": "finding: scoreFinding|finding: p\\.finding \\?\\? scoreFinding",
+          "paths": [
+            "app/dashboard"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "components/report/ParameterTiles.tsx",
+          "pattern": "on && p\\.finding"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "[Aa]t most THREE entries"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "at most THREE entries"
+        },
+        {
+          "type": "manual",
+          "how": "Open a new report: three areas show a warm AI note when selected; the other three show none. Check the PDF export for the same."
+        }
+      ]
+    },
+    {
+      "id": "NEXT-STEP-NO-DOCTOR-NAME",
+      "title": "Report next step is exactly 'Message your doctor about ...' or 'Book an in-person visit' (type book_medixora); a doctor is never named in report text, PDF footer or defaults",
+      "source": "Open items #5 and #15",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "Dr\\. Ruby",
+          "paths": [
+            "app/dashboard/scans",
+            "src/lib/report",
+            "components/report/InitialKaiScanReport.tsx",
+            "components/report/UpdateKaiScanReport.tsx"
+          ],
+          "exclude": [
+            "\\.test\\."
+          ]
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "Book an in-person visit"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "Message your doctor about"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "names a doctor"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/reportCopyGuard.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Check where the report screen uses the next-step 'type': book_medixora must still open the visit-booking action, and message_doctor the doctor chat."
+        }
+      ]
+    },
+    {
+      "id": "YOUR-WEEK-CARD",
+      "title": "'Your week': boxes are the patient's real check-in figures (dash when none); the line under them is AI-written (a light optional invitation when there is no check-in); no fixed sentence from code",
+      "source": "Open items #6",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "templateWeekHighlight",
+          "paths": [
+            "app",
+            "src",
+            "components"
+          ],
+          "exclude": []
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "weekRecapFromWellness\\(wellness\\)"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "WITHOUT a check-in"
+        },
+        {
+          "type": "manual",
+          "how": "Open a report for a patient with no weekly check-in: four dashes and one gentle invitation line (or no line while the AI is still writing). Decide whether four dashes look right or the boxes should hide."
+        }
+      ]
+    },
+    {
+      "id": "SMALL-MOVE-WORDING",
+      "title": "A move of 3-4 points is described as 'a little' better or softer, in chat, report and Score notes",
+      "source": "Open items #7",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "a little"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "Size of a move, in words"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/ragLlmAnalysis.ts",
+          "pattern": "only 3 or 4 points is"
+        }
+      ]
+    },
+    {
+      "id": "CHECKIN-COUNT-WORDING",
+      "title": "The weekly check-in is never described with a wrong number of questions (the app asks 7 over 2 screens, so the chat says 'a few quick questions')",
+      "source": "Open items #8",
+      "checks": [
+        {
+          "type": "absent",
+          "pattern": "five quick questions|5 quick questions",
+          "paths": [
+            "src",
+            "app",
+            "components"
+          ],
+          "exclude": [
+            "\\.test\\."
+          ]
+        },
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "answer a few quick questions"
+        }
+      ]
+    },
+    {
+      "id": "CHAT-REPORT-SAME-VOICE",
+      "title": "Chat and reports share one calm-friend voice (no filler openers); the report guardrails include the same voice lines as the chat",
+      "source": "Open items #9",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "calm, caring friend"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "VOICE\\.slice\\(0, 4\\)"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/kaiPersona.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "LANGUAGE-RULE",
+      "title": "Reports are always in English; the chat answers in English, Hindi or Hinglish (matching the patient)",
+      "source": "Open items #14: 'Keep report in English and chat in all 3 languages'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "in clear, simple English only"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "in clear, simple English only"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/kaiPersona.ts",
+          "pattern": "English, Hindi or Hinglish"
+        }
+      ]
+    },
+    {
+      "id": "CAPTURE-META",
+      "title": "Photo quality (live lighting/framing at capture) and what is on the face (beard, glasses, makeup, one optional tap) are saved with each scan and sent to both report prompts",
+      "source": "Prompt inputs rows 10-11: 'occlusion flags' and 'capture quality metrics' were not actually sent",
+      "checks": [
+        {
+          "type": "file-exists",
+          "file": "src/lib/captureMeta.ts"
+        },
+        {
+          "type": "present",
+          "file": "components/dashboard/FaceScanFlow.tsx",
+          "pattern": "captureMeta"
+        },
+        {
+          "type": "present",
+          "file": "components/dashboard/FaceScanFlow.tsx",
+          "pattern": "Anything on your face today"
+        },
+        {
+          "type": "present",
+          "file": "app/api/scans/submit/route.ts",
+          "pattern": "captureMeta"
+        },
+        {
+          "type": "present",
+          "file": "app/api/mobile-capture/submit/route.ts",
+          "pattern": "captureMeta"
+        },
+        {
+          "type": "present",
+          "file": "app/api/scan/route.ts",
+          "pattern": "captureMeta"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/scanPipeline/processScanJob.ts",
+          "pattern": "captureMeta"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/generateAndPersistKaiReport.ts",
+          "pattern": "capture_quality"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "capture_quality"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "capture_quality"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/captureMeta.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Take a scan on the web: tap Beard on the final screen, finish, and confirm the saved scan has scores.captureMeta (occlusions + one entry per photo). Phone-app scans (mobile/) do not send it yet; old scans have none."
+        }
+      ]
+    },
+    {
+      "id": "REPORT-PROMPTS-V2",
+      "title": "Both report prompts follow the reviewer's reworked document (9 Nov): calm-friend voice, plain-words list, skin type, routine steps, no ingredients/products, Indian skin notes, generic in-clinic line, optional check-in; numbers only in the summary (max two) and action details; a real change starts at 3 points",
+      "source": "kAI-Prompts-final.docx (9 Nov 2026) + founder decisions (numbers as in the prompt; 3-point rule and richer findings kept)",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/report/houseRules.ts",
+          "pattern": "never the word \"pigmentation\" in the text"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/houseRules.ts",
+          "pattern": "A move of 1 or 2 points is normal scan-to-scan variation"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/houseRules.ts",
+          "pattern": "THE WEEKLY CHECK-IN IS OPTIONAL"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/initialReportPrompt.ts",
+          "pattern": "X out of 100"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/updateReportPrompt.ts",
+          "pattern": "X out of 100"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "more than two numbers in summary"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "INTERNAL_TERMS"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/reportCopyGuard.ts",
+          "pattern": "write exactly 3 actions"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/reportCopyGuard.test.ts"
+        },
+        {
+          "type": "manual",
+          "how": "Item 16 (on hold): run the made-up-patient test script to confirm real AI output passes the code checker (summary 60-80 words, headline under 12 words, at most 2 numbers in the summary)."
         }
       ]
     }

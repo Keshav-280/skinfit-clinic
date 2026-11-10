@@ -142,7 +142,7 @@ export function InitialKaiScanReport({
     : "See what the phone can’t reach";
 
   const ctaBody = isExistingPatient
-    ? `${doctorName} can review this baseline with you.`
+    ? "Your doctor can go through this with you."
     : "A clinic Medixora pass measures what the phone can’t - hydration, bacteria, sensitivity.";
 
   const pdfData: KaiReportPdfData = {
@@ -255,7 +255,7 @@ export function InitialKaiScanReport({
         </div>
 
         <ReportShareFooter
-          shareText={`SkinFit kAI baseline: ${grade}/100. ${headline}`}
+          shareText={`My SkinFit starting point: ${grade}/100. ${headline}`}
           onDownloadPdf={() =>
             downloadKaiReportPdf(
               pdfData,

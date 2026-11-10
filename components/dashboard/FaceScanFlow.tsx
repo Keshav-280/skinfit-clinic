@@ -117,6 +117,8 @@ type CaptureItem = {
   file: File;
   preview: string;
   label: (typeof FACE_SCAN_CAPTURE_STEPS)[number]["id"];
+  /** Live lighting / framing result at the moment of capture. Absent for uploaded photos. */
+  quality?: { lighting: string; framing: string };
 };
 
 type MobileCaptureImageRef = {
@@ -300,6 +302,7 @@ export function FaceScanFlow({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [occlusions, setOcclusions] = useState<string[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [handoffSending, setHandoffSending] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
@@ -756,7 +759,12 @@ export function FaceScanFlow({
         const preview = URL.createObjectURL(blob);
         setPendingCapture((prev) => {
           clearPendingCapture(prev);
-          return { file: captured, preview, label: step.id };
+          return {
+            file: captured,
+            preview,
+            label: step.id,
+            quality: guidance ? { lighting: guidance.lighting, framing: guidance.face } : undefined,
+          };
         });
       },
       "image/jpeg",
@@ -771,6 +779,8 @@ export function FaceScanFlow({
     clearPendingCapture,
     cameraStepIndex,
     guidance?.readyToCapture,
+    guidance?.lighting,
+    guidance?.face,
   ]);
 
   const confirmPendingCapture = useCallback(() => {
@@ -962,6 +972,18 @@ export function FaceScanFlow({
       slotCaptures.forEach((c) => {
         if (c) formData.append("images", c.file);
       });
+      // How the photos were taken, and what the patient told us is on their face today.
+      formData.append(
+        "captureMeta",
+        JSON.stringify({
+          occlusions,
+          photos: slotCaptures.flatMap((c) =>
+            c
+              ? [{ pose: c.label, lighting: c.quality?.lighting ?? null, framing: c.quality?.framing ?? null }]
+              : []
+          ),
+        })
+      );
 
       if (tokenParam) {
         const res = await fetch("/api/mobile-capture/submit", {
@@ -1025,6 +1047,7 @@ export function FaceScanFlow({
     sessionIdParam,
     qrSessionId,
     qrCropContext,
+    occlusions,
   ]);
 
   const showPhotoGuide = step === "upload" && !cameraOpen && photoGuideOpen;
@@ -1971,6 +1994,39 @@ export function FaceScanFlow({
                   </div>
                 ) : null,
               )}
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-3xl rounded-[22px] border border-white/70 bg-white/35 p-4 backdrop-blur-sm sm:p-5">
+            <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-[#1E1B31]/60">
+              Anything on your face today? (optional)
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {(
+                [
+                  ["beard", "Beard"],
+                  ["glasses", "Glasses"],
+                  ["makeup", "Makeup"],
+                ] as const
+              ).map(([id, label]) => {
+                const on = occlusions.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setOcclusions((prev) => (on ? prev.filter((x) => x !== id) : [...prev, id]))
+                    }
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                      on
+                        ? "bg-[#1E1B31] text-white"
+                        : "border border-[#1E1B31]/20 bg-white/70 text-[#1E1B31] hover:bg-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           {scanError ? (

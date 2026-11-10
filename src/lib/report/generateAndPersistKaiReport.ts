@@ -7,6 +7,7 @@ import { scans, scheduleEvents, users } from "@/src/db/schema";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { buildKaiReportParamRowsFromRag } from "@/src/lib/kaiReportMapping";
 import { scoreToGrade } from "@/src/lib/report/gradeComputation";
+import { captureQualityForReport } from "@/src/lib/captureMeta";
 import { computeMultiWeekInsights } from "@/src/lib/multiWeekPatternAnalysis";
 import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 import { scanDisplayResolvedFromRow } from "@/src/lib/resolveScanDisplayScores";
@@ -57,6 +58,7 @@ export async function generateAndPersistKaiReport(
         gender: true,
         skinType: true,
         primaryConcern: true,
+        primaryGoal: true,
         fitzpatrick: true,
       },
     }),
@@ -133,6 +135,8 @@ export async function generateAndPersistKaiReport(
     skin_type: user.skinType,
     fitzpatrick: user.fitzpatrick,
     primary_concern: user.primaryConcern,
+    // The profile calls this the 'Primary goal'. Either may be the one the patient filled in.
+    main_goal: user.primaryGoal,
     under_clinic_care: scoresUnlocked,
   };
 
@@ -157,6 +161,7 @@ export async function generateAndPersistKaiReport(
         overall: gradeInfo,
       },
       weekly_checkin: wellness,
+      capture_quality: captureQualityForReport(row.scores) ?? null,
       environment,
       focus_parameters: paramRows.map((p) => ({
         key: p.key,
@@ -233,6 +238,7 @@ export async function generateAndPersistKaiReport(
         narrative_summary: previous.aiSummary,
       },
       weekly_checkin: wellness,
+      capture_quality: captureQualityForReport(row.scores) ?? null,
       history_patterns: (await computeMultiWeekInsights(userId)).map((i) => i.text),
       focus_parameters: paramRows.map((p) => {
         const prev = prevParamRows.find((x) => x.key === p.key);
@@ -246,7 +252,7 @@ export async function generateAndPersistKaiReport(
       }),
       environment: environment ?? {},
       clinic_record: {
-        doctor: "Dr. Ruby",
+        doctor: "the clinic doctor (never name them in the report)",
         treatments: treatmentish
           ? [
               {

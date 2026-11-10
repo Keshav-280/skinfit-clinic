@@ -54,13 +54,6 @@ export function weekRecapFromWellness(
   ];
 }
 
-export function templateWeekHighlight(
-  wellness: LlmWellnessCheckinInput | null
-): string | null {
-  if (!wellness?.sleepHours?.trim()) return null;
-  return `You logged ${wellness.sleepHours.trim()} of sleep this week - we'll keep watching how that sits with your markers.`;
-}
-
 /**
  * "Likely factors" cards. Every card is text the AI wrote and that passed the checks in
  * aiVerified.ts; code adds no sentences of its own. The weather, treatments, check-in and history
@@ -128,12 +121,12 @@ export function defaultNextStep(opts: {
 }): { heading: string; body: string } {
   if (opts.escalate) {
     return {
-      heading: `${opts.doctorName} should review this scan`,
-      body: `Something on this week's capture is worth a direct look - message ${opts.doctorName} with this report open so they can advise next steps.`,
+      heading: "Your doctor should review this scan",
+      body: "Something on this week's capture is worth a direct look - message your doctor with this report open so they can advise next steps.",
     };
   }
   return {
-    heading: `${opts.doctorName} should see your ${opts.topConcern.toLowerCase()} progress`,
+    heading: `Your doctor should see your ${opts.topConcern.toLowerCase()} progress`,
     body: `A quick message keeps your plan aligned with what this week actually shows - not just how it feels day to day.`,
   };
 }

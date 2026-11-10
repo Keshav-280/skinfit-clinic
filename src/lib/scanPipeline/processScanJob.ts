@@ -528,6 +528,7 @@ export async function processScanJob(
         ...(Object.keys(spotAnnotatedByPose).length > 0
           ? { spotAnnotatedByPose }
           : {}),
+        ...(payload.captureMeta ? { captureMeta: payload.captureMeta } : {}),
         maskExportVersion,
         ...(merged.spatialOutputs ? { spatialOutputs: merged.spatialOutputs } : {}),
         ...(merged.detection_regions && merged.detection_regions.length > 0

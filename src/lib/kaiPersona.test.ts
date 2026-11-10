@@ -25,6 +25,11 @@ describe("kAI persona prompt", () => {
     expect(KAI_SYSTEM_PROMPT).not.toContain("say kindly that you are here for their skin and SkinFit care");
   });
 
+  it("sounds like a calm friend with no filler openers", () => {
+    expect(KAI_SYSTEM_PROMPT).toContain("calm, caring friend");
+    expect(KAI_SYSTEM_PROMPT).toContain("Great question!");
+  });
+
   it("keeps the safety rules", () => {
     expect(KAI_SYSTEM_PROMPT).toContain("must not diagnose");
     expect(KAI_SYSTEM_PROMPT).toContain("isotretinoin");

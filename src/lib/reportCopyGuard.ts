@@ -83,13 +83,33 @@ const CURATED: Partial<Record<RagKaiParamKey, { insight: string; article: string
 export const MEDICAL_ADVICE_TERMS =
   /\b(mg|dose|dosage|tablet|capsule|antibiotic|isotretinoin|accutane|steroid|prescri\w+|hydroquinone|tretinoin|retin-a|retinoid\w*|minoxidil|finasteride)\b/i;
 
-/** Keys whose values are labels or codes, not patient-facing prose. */
+/** Keys whose values are labels, codes or the check-in figures, not patient-facing prose. */
 const NON_PROSE_KEYS = new Set([
   "status", "key", "type", "parameter", "label", "movement", "confidence",
   "state", "factor", "compared_with", "scan_id", "next_reports_on",
+  "sleep", "stress", "water", "routine_adherence",
 ]);
 /** Keys that must read as finished sentences. */
 const SENTENCE_KEYS = new Set(["summary", "finding", "detail", "text", "reason", "highlight"]);
+
+/** Words that are internal to the product or the model and must never reach a patient. */
+const INTERNAL_TERMS =
+  /\b(pigmentation|medixora|lesions?|baselines?|textbook|capture variance|quality gate|algorithm|data points|correlation|causation|score_100)\b|kAI insight/i;
+/** Filler the reviewer asked us to cut: warmth comes from being specific, not from adjectives. */
+const FILLER_WORDS = /\b(lovely|wonderful|amazing|great|truly|really)\b/i;
+
+const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
+
+/** Numbers in `text` that are not in `data` (a rounded or floored score also counts as present). */
+function ungroundedNumbers(text: string, data: string): string[] {
+  const allowed = new Set<string>();
+  for (const n of data.match(NUM) ?? []) {
+    allowed.add(n);
+    allowed.add(String(Math.round(Number(n))));
+    allowed.add(String(Math.floor(Number(n))));
+  }
+  return (text.match(NUM) ?? []).filter((n) => !allowed.has(n));
+}
 
 function collectProse(
   node: unknown,
@@ -119,22 +139,46 @@ export function validateGeneratedReport(report: unknown, payload: unknown): stri
   collectProse(report, "", prose);
   const data = JSON.stringify(payload ?? "");
   const issues: string[] = [];
+  // Structure: three focus steps and at most three area notes (unless the report asks for a recapture).
+  const r = (report && typeof report === "object" ? report : {}) as Record<string, unknown>;
+  if (r.status !== "recapture_required") {
+    if (Array.isArray(r.actions) && r.actions.length !== 3) issues.push("write exactly 3 actions");
+    if (Array.isArray(r.parameters) && r.parameters.length > 3) issues.push("at most 3 parameter notes");
+  }
   for (const { key, text, digitsOk } of prose) {
     const t = text.trim();
     if (!t) continue;
-    // The screen already shows every number; sentences must add meaning, not repeat figures.
-    if (!digitsOk && /\d/.test(t)) issues.push(`numbers in ${key} (the screen already shows them; write it in words)`);
+    // Numbers: the summary may carry two (scores from the data); an action detail may name its score
+    // ("X out of 100") or a habit number. Everywhere else the screen already shows the figures.
+    if (!digitsOk && /\d/.test(t)) {
+      if (key === "summary") {
+        const nums = t.match(NUM) ?? [];
+        if (nums.length > 2) issues.push("more than two numbers in summary");
+        const bad = ungroundedNumbers(t, data);
+        if (bad.length) issues.push(`number ${bad[0]} in summary is not in the data`);
+      } else if (key !== "detail") {
+        issues.push(`numbers in ${key} (use words only; the screen already shows the figures)`);
+      }
+    }
+    if (INTERNAL_TERMS.test(t)) issues.push(`internal word in ${key} (use plain words: dark spots, in-clinic skin analysis, your starting point)`);
+    if (FILLER_WORDS.test(t)) issues.push(`filler word in ${key} (be specific instead of using adjectives)`);
+    if (key === "headline" && wordCount(t) > 12) issues.push("headline is longer than 12 words");
+    if (key === "summary") {
+      const w = wordCount(t);
+      if (w < 45 || w > 95) issues.push(`summary is ${w} words (aim for 60 to 80)`);
+    }
     if (MEDICAL_ADVICE_TERMS.test(t)) issues.push(`medical advice term in ${key}`);
     if (NON_CONSUMER_TERMS.test(t)) issues.push(`clinical jargon in ${key}`);
     if (/\bgrade\s+[A-E][+-]?\b/i.test(t)) issues.push(`letter grade in ${key}`);
     if (t.includes("!")) issues.push(`exclamation mark in ${key}`);
+    if (/\bDr\.?\s+[A-Z]|\bRuby\b|\bDoctor\s+[A-Z][a-z]+/.test(t)) issues.push(`names a doctor in ${key} (say "your doctor")`);
     if (/\bdeclin\w*|\bdecreas\w*/i.test(t)) issues.push(`ambiguous word (declined) in ${key}`);
     if (SENTENCE_KEYS.has(key) && t.length > 30 && !/[.!?]["')\]]?$/.test(t)) {
       issues.push(`unfinished sentence in ${key}`);
     }
-    for (const m of t.matchAll(/(\d{1,3})\s*\/\s*100/g)) {
+    for (const m of t.matchAll(/(\d{1,3})\s*(?:\/|out of)\s*100/gi)) {
       const n = Number(m[1]);
-      if (n > 90 || !new RegExp(`(?<!\\d)${n}(?!\\d)`).test(data)) {
+      if (n > 90 || ungroundedNumbers(String(n), data).length > 0) {
         issues.push(`score ${n}/100 not in the data (${key})`);
       }
     }

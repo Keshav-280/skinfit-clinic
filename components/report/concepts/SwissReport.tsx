@@ -20,7 +20,7 @@ export function SwissReport({ data }: { data: ConceptReportData }) {
       <div className="mx-auto max-w-[440px] px-5 pb-12 pt-6">
         <header className="flex items-end justify-between border-b border-[#161410] pb-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em]">
-            kAI baseline
+            kAI starting point
           </p>
           <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
             {data.dateLabel}

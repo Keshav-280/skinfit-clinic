@@ -73,7 +73,7 @@ export function ParameterTiles({
                   )}
                 </span>
               </div>
-              {on ? (
+              {on && p.finding ? (
                 <p className="mt-2.5 text-[11.5px] leading-[1.45] text-[#5B6478]">
                   {p.finding}
                 </p>

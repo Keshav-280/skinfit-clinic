@@ -21,6 +21,11 @@ export type ScanJobPayload = {
     viewfinderW?: number;
     viewfinderH?: number;
   };
+  /** How the photos were taken and what the patient said is on their face (see src/lib/captureMeta.ts). */
+  captureMeta?: {
+    occlusions: Array<"beard" | "glasses" | "makeup">;
+    photos: Array<{ pose: string; lighting: string | null; framing: string | null; checked: boolean }>;
+  };
   /** QR handoff session to mark complete when async scan finishes on desktop. */
   mobileSessionId?: string;
   /** Set by POST /api/scans/submit after face-identity passes — worker skips re-check. */
