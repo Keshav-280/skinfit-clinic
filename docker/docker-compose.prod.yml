@@ -48,22 +48,6 @@ services:
       - "8002"
     container_name: skinfit-spot-detector
 
-  # Face annotator for the Medixora front photos: no login, the link is the secret.
-  # Public at /annotateimages/ (nginx). Photos + annotations live in the annotator-data volume.
-  face-annotator:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.face-annotator
-    restart: unless-stopped
-    container_name: skinfit-face-annotator
-    mem_limit: 256m
-    environment:
-      PUBLIC_URL: https://my.skinfitwellness.in
-    expose:
-      - "5050"
-    volumes:
-      - annotator-data:/data
-
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
@@ -86,6 +70,3 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-
-volumes:
-  annotator-data:
