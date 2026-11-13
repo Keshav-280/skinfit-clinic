@@ -94,3 +94,7 @@ services/spot-detector-v15/api/face_landmarker.task
 # preflight scratch
 preflight/.test-results.json
 .vitest/
+
+# Face annotator data (patient photos, annotations, access key): never commit
+tools/face-annotator/data/
+tools/face-annotator/.access-key
