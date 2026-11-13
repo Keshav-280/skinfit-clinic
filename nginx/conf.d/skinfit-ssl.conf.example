@@ -48,7 +48,9 @@ server {
 
   location /annotateimages/ {
     set $annotator_upstream face-annotator:5050;
-    proxy_pass http://$annotator_upstream/;
+    # With a variable in proxy_pass nginx would send every request to "/": rewrite keeps the rest of the address.
+    rewrite ^/annotateimages/(.*)$ /$1 break;
+    proxy_pass http://$annotator_upstream;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
