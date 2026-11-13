@@ -107,9 +107,10 @@ for (const [i, link] of lines.entries()) {
     continue;
   }
   const d = r.d;
-  const front = (d.CollectImage ?? []).find((c) => String(c.FaceType) === "1" && String(c.LightType) === "1");
+  // Camera angles in a Medixora report: FaceType 1 = left side, 2 = FRONT, 3 = right side. LightType 1 = white light.
+  const front = (d.CollectImage ?? []).find((c) => String(c.FaceType) === "2" && String(c.LightType) === "1");
   if (!front?.Pic) {
-    console.log(`#${i + 1}: no front photo (side scans only)`);
+    console.log(`#${i + 1}: no front photo in this report`);
     fs.appendFileSync(indexPath, `${id},failed: no front photo\n`);
     failed++;
     continue;
