@@ -73,6 +73,7 @@
       <button class="tb" id="zout" title="Zoom out (-)">&minus;</button>
       <button class="tb" id="zin" title="Zoom in (+)">+</button>
       <button class="tb" id="zfit" title="Fit to screen (0)">Fit <kbd>0</kbd></button>
+      <span id="zlabel" style="align-self:center;color:var(--muted);font-size:12px;padding:0 4px">100%</span>
     </div>
   </div>
   <div id="side">
@@ -80,6 +81,12 @@
     <div id="cards"></div>
     <div class="toggles">
       <label><input type="checkbox" id="onlyActive"> Show only the active parameter's marks</label>
+      <label>Touchpad / wheel
+        <select id="wheelMode" style="background:#0f1115;color:#e8eaf0;border:1px solid #2a2f3a;border-radius:6px;padding:3px 6px">
+          <option value="auto">Auto (touchpad scrolls, wheel zooms)</option>
+          <option value="scroll">Always scroll (Ctrl + wheel zooms)</option>
+          <option value="zoom">Always zoom</option>
+        </select></label>
       <label>Brightness <input type="range" id="bright" min="0.8" max="2.2" step="0.05" value="1"></label>
       <label>Contrast <input type="range" id="contrast" min="0.8" max="1.8" step="0.05" value="1"></label>
     </div>
@@ -97,7 +104,9 @@
       <b>Free curve:</b> press, draw, release.<br>
       <b>Eraser:</b> click a mark to remove it, or drag across several.<br>
       <kbd>Esc</kbd> undoes (and cancels a shape you are in the middle of). <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes.<br>
-      <b>Zoom:</b> mouse wheel, or <kbd>+</kbd> <kbd>-</kbd>, <kbd>0</kbd> to fit. <b>Move:</b> hold <kbd>Space</kbd> and drag, or right-drag. <kbd>&larr;</kbd> <kbd>&rarr;</kbd> change photo.<br>
+      <b>Zoom:</b> pinch on the touchpad, mouse wheel, or <kbd>+</kbd> <kbd>-</kbd>; <kbd>0</kbd> to fit.<br>
+      <b>Look around at the same zoom:</b> two-finger scroll on the touchpad, the <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd> keys (hold <kbd>Shift</kbd> to go faster), or hold <kbd>Space</kbd> and drag.<br>
+      <b>Change photo:</b> <kbd>PageUp</kbd> <kbd>PageDown</kbd> or <kbd>[</kbd> <kbd>]</kbd>, or the buttons (<kbd>&larr;</kbd> <kbd>&rarr;</kbd> also work when the photo is not zoomed).<br>
       Work saves automatically. A photo turns green when all 6 scores are set.
     </div>
   </div>
@@ -252,6 +261,7 @@ function resize() {
 }
 function draw() {
   const r = cv.getBoundingClientRect();
+  if (img) $("zlabel").textContent = Math.round((view.s / fitScale()) * 100) + "%";
   ctx.clearRect(0, 0, r.width, r.height);
   if (!img) return;
   ctx.save();
@@ -332,10 +342,21 @@ function cancelInProgress() { const had = !!(pending || drag); pending = null; d
 /* ---------- pointer interaction ---------- */
 function pos(e) { const r = cv.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; }
 cv.addEventListener("contextmenu", (e) => e.preventDefault());
+/* Wheel / touchpad. Pinch (Ctrl+wheel) always zooms. A touchpad two-finger scroll moves around the photo at the same
+   zoom; a mouse wheel zooms. "Scroll / zoom" in the side panel overrides the automatic choice. */
+function wheelMode() { return $("wheelMode").value; }
+function looksLikeTouchpad(e) { return e.deltaMode === 0 && (e.deltaX !== 0 || Math.abs(e.deltaY) < 50); }
+function panBy(dx, dy) { if (!img) return; view.ox -= dx; view.oy -= dy; clampView(); draw(); }
 cv.addEventListener("wheel", (e) => {
   e.preventDefault();
-  const { sx, sy } = pos(e);
-  zoomAt(sx, sy, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016)));
+  if (!img) return;
+  const { sx, sy } = pos(e), mode = wheelMode();
+  if (e.ctrlKey || e.metaKey) return zoomAt(sx, sy, Math.exp(-e.deltaY * 0.01));          // pinch on a touchpad, or Ctrl + wheel
+  const unit = e.deltaMode === 1 ? 32 : 1;                                                 // lines -> pixels
+  const dx = e.deltaX * unit, dy = e.deltaY * unit;
+  const scroll = mode === "scroll" || (mode === "auto" && looksLikeTouchpad(e));
+  if (scroll) return panBy(e.shiftKey && dx === 0 ? dy : dx, e.shiftKey && dx === 0 ? 0 : dy);
+  zoomAt(sx, sy, Math.exp(-e.deltaY * 0.0016));                                            // mouse wheel zoom
 }, { passive: false });
 
 function eraseAt(sx, sy, first) {
@@ -425,8 +446,18 @@ window.addEventListener("keydown", (e) => {
   if (k === "+" || k === "=") return zoomCentre(1.3);
   if (k === "-" || k === "_") return zoomCentre(1 / 1.3);
   if (k === "0") { fitView(); return draw(); }
-  if (k === "arrowright") return loadImage(idx + 1);
-  if (k === "arrowleft") return loadImage(idx - 1);
+  if (k === "pagedown" || k === "]") return loadImage(idx + 1);
+  if (k === "pageup" || k === "[") return loadImage(idx - 1);
+  if (k.startsWith("arrow")) {
+    e.preventDefault();
+    if (img && view.s > fitScale() * 1.01) {                       // zoomed in: the arrows move around the photo
+      const step = e.shiftKey ? 280 : 90;
+      return panBy(k === "arrowleft" ? -step : k === "arrowright" ? step : 0, k === "arrowup" ? -step : k === "arrowdown" ? step : 0);
+    }
+    if (k === "arrowright") return loadImage(idx + 1);              // not zoomed: left / right change the photo, as before
+    if (k === "arrowleft") return loadImage(idx - 1);
+    return;
+  }
 });
 window.addEventListener("keyup", (e) => { if (e.key === " ") { spaceDown = false; cv.style.cursor = "crosshair"; } });
 
@@ -490,6 +521,8 @@ $("prev").onclick = (e) => { e.currentTarget.blur(); loadImage(idx - 1); };
 $("next").onclick = (e) => { e.currentTarget.blur(); loadImage(idx + 1); };
 $("nextTodo").onclick = (e) => { e.currentTarget.blur(); for (let k = 1; k <= ids.length; k++) { const j = (idx + k) % ids.length; if (!progress[ids[j]]?.done) return loadImage(j); } setStatus("All photos are finished"); };
 ["onlyActive", "bright", "contrast"].forEach((id) => $(id).addEventListener("input", draw));
+try { $("wheelMode").value = localStorage.getItem("annot_wheel") || "auto"; } catch {}
+$("wheelMode").addEventListener("change", (e) => { try { localStorage.setItem("annot_wheel", e.target.value); } catch {} e.target.blur(); });
 window.addEventListener("resize", () => { resize(); if (img) { fitView(); draw(); } });
 window.addEventListener("beforeunload", () => { if (ann) navigator.sendBeacon?.(`api/annotation/${ann.imageId}?annotator=${encodeURIComponent(annotator)}`, new Blob([JSON.stringify(ann)], { type: "application/json" })); });
 
