@@ -8,17 +8,24 @@
   :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e8eaf0; --muted:#98a0b0; --accent:#6ea8fe; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, Segoe UI, sans-serif; }
-  #app { display: grid; grid-template-columns: 150px 1fr 330px; height: 100%; }
+  #app { display: grid; grid-template-columns: 110px 1fr 340px; height: 100%; }
   #list { background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; padding: 8px; }
   #list button { display: flex; align-items: center; gap: 6px; width: 100%; margin: 0 0 4px; padding: 6px 8px; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--text); cursor: pointer; text-align: left; font: inherit; }
   #list button.cur { border-color: var(--accent); background: #1d2535; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: #444b59; flex: none; }
   .dot.part { background: #f5a524; } .dot.done { background: #30a46c; }
-  #stage { position: relative; min-width: 0; }
+  #stage { position: relative; min-width: 0; overflow: hidden; }
   #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
-  #top { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+  #top { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; pointer-events: none; }
   #top > * { pointer-events: auto; }
   .pill { background: rgba(23,26,33,.92); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; }
+  #toolbar { position: absolute; left: 10px; bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; background: rgba(23,26,33,.94); border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+  #toolbar .sep { width: 1px; background: var(--line); margin: 2px 4px; }
+  .tb { display: inline-flex; align-items: center; gap: 6px; background: #232938; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  .tb:hover { border-color: var(--accent); }
+  .tb.on { background: #264a8a; border-color: #3a66b8; }
+  .tb svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  kbd { background: #232938; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; color: var(--muted); }
   #side { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px; }
   h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
   .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; cursor: pointer; background: #1b1f28; }
@@ -27,6 +34,10 @@
   .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
   .card .name { font-weight: 600; flex: 1; }
   .card .meta { color: var(--muted); font-size: 12px; }
+  .chips { display: flex; gap: 4px; margin-top: 8px; }
+  .chip { flex: 1; display: inline-flex; justify-content: center; align-items: center; gap: 5px; background: #232938; color: var(--muted); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; cursor: pointer; font: inherit; font-size: 12px; }
+  .chip.on { color: var(--text); border-color: var(--accent); background: #1d2535; }
+  .chip svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
   .score { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .score input[type=range] { flex: 1; }
   .score input[type=number] { width: 64px; background: #0f1115; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
@@ -34,8 +45,7 @@
   button.btn { background: #232938; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; font: inherit; }
   button.btn:hover { border-color: var(--accent); }
   button.btn.primary { background: #264a8a; border-color: #3a66b8; }
-  .help { color: var(--muted); font-size: 12px; margin-top: 12px; line-height: 1.6; }
-  kbd { background: #232938; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  .help { color: var(--muted); font-size: 12px; margin-top: 12px; line-height: 1.7; }
   .toggles { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
   .toggles label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
   #status { color: var(--muted); font-size: 12px; }
@@ -51,6 +61,19 @@
       <span class="pill" id="who"></span>
       <span class="pill" id="status">&nbsp;</span>
     </div>
+    <div id="toolbar">
+      <button class="tb" data-tool="circle" title="Circle (1)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>Circle <kbd>1</kbd></button>
+      <button class="tb" data-tool="line" title="Straight line (2)"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"/></svg>Line <kbd>2</kbd></button>
+      <button class="tb" data-tool="curve" title="Free curve (3)"><svg viewBox="0 0 24 24"><path d="M3 17c3-12 6-12 9-4s6 5 9-6"/></svg>Free curve <kbd>3</kbd></button>
+      <button class="tb" data-tool="eraser" title="Eraser (4 or X)"><svg viewBox="0 0 24 24"><path d="M8 20h12M5 15l9-9a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3l-8 8H9z"/></svg>Eraser <kbd>4</kbd></button>
+      <span class="sep"></span>
+      <button class="tb" id="undo" title="Undo (Esc or Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo <kbd>Esc</kbd></button>
+      <button class="tb" id="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg>Redo</button>
+      <span class="sep"></span>
+      <button class="tb" id="zout" title="Zoom out (-)">&minus;</button>
+      <button class="tb" id="zin" title="Zoom in (+)">+</button>
+      <button class="tb" id="zfit" title="Fit to screen (0)">Fit <kbd>0</kbd></button>
+    </div>
   </div>
   <div id="side">
     <h2>Parameters</h2>
@@ -64,27 +87,36 @@
       <button class="btn" id="prev">Previous</button>
       <button class="btn" id="next">Next</button>
       <button class="btn primary" id="nextTodo">Next unfinished</button>
-      <button class="btn" id="undo">Undo</button>
     </div>
     <div class="help">
       Score every parameter from <b>1 to 100</b>. <b>100 = best skin, 1 = worst</b> (the same direction as the app).<br>
-      <kbd>1</kbd>-<kbd>6</kbd> choose parameter &middot; <kbd>V</kbd> select / delete mode &middot; <kbd>Del</kbd> remove selected &middot; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo<br>
-      <b>Circles</b> (acne, scars, pigmentation, under-eye): press on the centre, drag out to the edge. A single click makes a small circle.<br>
-      <b>Lines</b> (wrinkles, sagging): click the start, click the end (or press and drag). <kbd>Esc</kbd> cancels.<br>
-      Zoom: mouse wheel &middot; Move: hold <kbd>Space</kbd> and drag, or right-drag &middot; <kbd>&larr;</kbd> <kbd>&rarr;</kbd> change photo.<br>
-      Work saves automatically. An image turns green when all 6 scores are set.
+      <b>Choose a parameter:</b> <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> <kbd>Y</kbd> (or <kbd>Tab</kbd>), or click its card.<br>
+      <b>Choose the shape for that parameter:</b> <kbd>1</kbd> circle &middot; <kbd>2</kbd> line &middot; <kbd>3</kbd> free curve. Each parameter remembers its own shape. <kbd>4</kbd> or <kbd>X</kbd> = eraser.<br>
+      <b>Circle:</b> click one end of the circle's width, then move: the opposite end follows your pointer. Click again to finish (or press, drag, release).<br>
+      <b>Line:</b> click the start, click the end (or press and drag).<br>
+      <b>Free curve:</b> press, draw, release.<br>
+      <b>Eraser:</b> click a mark to remove it, or drag across several.<br>
+      <kbd>Esc</kbd> undoes (and cancels a shape you are in the middle of). <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes.<br>
+      <b>Zoom:</b> mouse wheel, or <kbd>+</kbd> <kbd>-</kbd>, <kbd>0</kbd> to fit. <b>Move:</b> hold <kbd>Space</kbd> and drag, or right-drag. <kbd>&larr;</kbd> <kbd>&rarr;</kbd> change photo.<br>
+      Work saves automatically. A photo turns green when all 6 scores are set.
     </div>
   </div>
 </div>
 <script>
 const PARAMS = [
-  { key: "active_acne",    label: "Active acne",      tool: "circle", color: "#ff5c61" },
-  { key: "acne_scars",     label: "Acne scars",       tool: "circle", color: "#ffb02e" },
-  { key: "pigmentation",   label: "Pigmentation",     tool: "circle", color: "#b07cff" },
-  { key: "under_eye",      label: "Under-eye",        tool: "circle", color: "#5b8cff" },
-  { key: "wrinkles",       label: "Wrinkles",         tool: "line",   color: "#25d0b4" },
-  { key: "sagging_volume", label: "Sagging & volume", tool: "line",   color: "#4ad57f" },
+  { key: "active_acne",    label: "Active acne",      tool: "circle", color: "#ff5c61", hot: "q" },
+  { key: "acne_scars",     label: "Acne scars",       tool: "circle", color: "#ffb02e", hot: "w" },
+  { key: "pigmentation",   label: "Pigmentation",     tool: "circle", color: "#b07cff", hot: "e" },
+  { key: "under_eye",      label: "Under-eye",        tool: "circle", color: "#5b8cff", hot: "r" },
+  { key: "wrinkles",       label: "Wrinkles",         tool: "line",   color: "#25d0b4", hot: "t" },
+  { key: "sagging_volume", label: "Sagging & volume", tool: "line",   color: "#4ad57f", hot: "y" },
 ];
+const TOOL_ICON = {
+  circle: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>',
+  line: '<svg viewBox="0 0 24 24"><path d="M4 20 20 4"/></svg>',
+  curve: '<svg viewBox="0 0 24 24"><path d="M3 17c3-12 6-12 9-4s6 5 9-6"/></svg>',
+};
+const TOOL_LABEL = { circle: "Circle", line: "Line", curve: "Free curve" };
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 
@@ -94,23 +126,25 @@ let ann = null;               // current annotation
 let img = null;               // current HTMLImageElement
 let view = { s: 1, ox: 0, oy: 0 };
 let activeKey = PARAMS[0].key;
-let selectMode = false, selectedId = null;
-let pendingLine = null;       // {x,y} image px of a started line
+const toolFor = Object.fromEntries(PARAMS.map((p) => [p.key, p.tool])); // each parameter remembers its own shape
+let eraser = false;
+let pending = null;           // {kind:"circle"|"line", a:{x,y}} first click of a click-click shape (image px)
 let drag = null;              // active pointer interaction
-let hover = null;             // pointer pos in image px
+let hover = null;             // pointer position in image px
 let spaceDown = false;
-const undoStack = [];
+let undoStack = [], redoStack = [];
 let saveTimer = null;
 
 const param = (k) => PARAMS.find((p) => p.key === k);
 const uid = () => Math.random().toString(36).slice(2, 10);
+const curTool = () => (eraser ? "eraser" : toolFor[activeKey]);
 
 /* ---------- storage ---------- */
 function setStatus(t) { $("status").textContent = t || " "; }
 async function api(path, opts) { const r = await fetch(path, opts); if (!r.ok) throw new Error(r.status); return r.json(); }
 
 function blank(id) {
-  return { version: 1, annotator, imageId: id, imageSize: null, scores: Object.fromEntries(PARAMS.map((p) => [p.key, null])), shapes: [], updatedAt: null };
+  return { version: 2, annotator, imageId: id, imageSize: null, scores: Object.fromEntries(PARAMS.map((p) => [p.key, null])), shapes: [], updatedAt: null };
 }
 function scheduleSave() {
   setStatus("Saving...");
@@ -135,7 +169,7 @@ async function loadImage(i) {
   await saveNow();
   idx = Math.max(0, Math.min(ids.length - 1, i));
   const id = ids[idx];
-  selectedId = null; pendingLine = null; undoStack.length = 0;
+  pending = null; drag = null; undoStack = []; redoStack = [];
   const [saved, el] = await Promise.all([
     api(`api/annotation/${id}?annotator=${encodeURIComponent(annotator)}`),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `img/${id}.jpg`; }),
@@ -148,11 +182,26 @@ async function loadImage(i) {
   localStorage.setItem("annot_last_" + annotator, String(idx));
   setStatus(saved ? "Loaded" : "New photo");
 }
-function fitView() {
-  const r = cv.getBoundingClientRect();
-  const s = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight) * 0.98;
-  view = { s, ox: (r.width - img.naturalWidth * s) / 2, oy: (r.height - img.naturalHeight * s) / 2 };
+
+/* ---------- view: zoom and pan ---------- */
+/* The bottom strip is kept free for the toolbar, so the photo fits above it. */
+function vp() { const r = cv.getBoundingClientRect(); return { w: r.width, h: Math.max(200, r.height - $("toolbar").offsetHeight - 26) }; }
+function fitScale() { const v = vp(); return Math.min(v.w / img.naturalWidth, v.h / img.naturalHeight) * 0.98; }
+/* Keep the photo on screen: when it is smaller than the window in one direction it is centred, otherwise it
+   cannot be dragged more than a small margin past its edges. This is what stops zooming out from drifting away. */
+function clampView() {
+  const v = vp(), w = img.naturalWidth * view.s, h = img.naturalHeight * view.s, m = 60;
+  view.ox = w <= v.w ? (v.w - w) / 2 : Math.min(m, Math.max(v.w - w - m, view.ox));
+  view.oy = h <= v.h ? (v.h - h) / 2 : Math.min(m, Math.max(v.h - h - m, view.oy));
 }
+function fitView() { view.s = fitScale(); view.ox = 0; view.oy = 0; clampView(); }
+function zoomAt(sx, sy, factor) {
+  const f0 = fitScale(), before = toImg(sx, sy);
+  view.s = Math.max(f0, Math.min(f0 * 14, view.s * factor));
+  view.ox = sx - before.x * view.s; view.oy = sy - before.y * view.s;
+  clampView(); draw();
+}
+function zoomCentre(factor) { const v = vp(); zoomAt(v.w / 2, v.h / 2, factor); }
 
 /* ---------- geometry ---------- */
 const toImg = (sx, sy) => ({ x: (sx - view.ox) / view.s, y: (sy - view.oy) / view.s });
@@ -165,22 +214,33 @@ function distSeg(px, py, ax, ay, bx, by) {
   let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
-function hit(sx, sy) {
-  let best = null, bd = 14;
-  for (const sh of ann.shapes) {
-    if ($("onlyActive").checked && sh.param !== activeKey) continue;
-    let d;
-    if (sh.type === "circle") {
-      const c = denorm(sh.cx, sh.cy), p = toScr(c.x, c.y), r = sh.r * img.naturalWidth * view.s;
-      const dc = Math.hypot(sx - p.x, sy - p.y);
-      d = dc <= r ? Math.min(dc, Math.abs(dc - r)) : dc - r;
-    } else {
-      const a = toScr(...Object.values(denorm(sh.x1, sh.y1))), b = toScr(...Object.values(denorm(sh.x2, sh.y2)));
-      d = distSeg(sx, sy, a.x, a.y, b.x, b.y);
-    }
-    if (d < bd) { bd = d; best = sh; }
+function shapeScreenPoints(sh) {
+  if (sh.type === "line") return [toScr(...Object.values(denorm(sh.x1, sh.y1))), toScr(...Object.values(denorm(sh.x2, sh.y2)))];
+  return sh.points.map((p) => toScr(...Object.values(denorm(p.x, p.y))));
+}
+/* Distance in screen pixels from (sx, sy) to a shape's outline (0 inside a circle when inside=true). */
+function shapeDistance(sh, sx, sy, inside) {
+  if (sh.type === "circle") {
+    const c = denorm(sh.cx, sh.cy), p = toScr(c.x, c.y), r = sh.r * img.naturalWidth * view.s;
+    const dc = Math.hypot(sx - p.x, sy - p.y);
+    return dc <= r ? (inside ? 0 : r - dc) : dc - r;
   }
+  const pts = shapeScreenPoints(sh);
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) best = Math.min(best, distSeg(sx, sy, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y));
   return best;
+}
+function visible(sh) { return !$("onlyActive").checked || sh.param === activeKey; }
+/* Shapes under the pointer, topmost first. */
+function hitsAt(sx, sy, tol, inside) {
+  return ann.shapes.filter((sh) => visible(sh) && shapeDistance(sh, sx, sy, inside) <= tol).reverse();
+}
+
+/* circle from two ends of its width (diameter) */
+function circleFromDiameter(a, b) {
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, r = Math.hypot(b.x - a.x, b.y - a.y) / 2;
+  const n = norm(mid.x, mid.y);
+  return { cx: n.x, cy: n.y, r: r / img.naturalWidth };
 }
 
 /* ---------- drawing ---------- */
@@ -188,7 +248,7 @@ function resize() {
   const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (img) draw();
+  if (img) { clampView(); draw(); }
 }
 function draw() {
   const r = cv.getBoundingClientRect();
@@ -198,64 +258,116 @@ function draw() {
   ctx.filter = `brightness(${$("bright").value}) contrast(${$("contrast").value})`;
   ctx.drawImage(img, view.ox, view.oy, img.naturalWidth * view.s, img.naturalHeight * view.s);
   ctx.restore();
-  for (const sh of ann.shapes) {
-    if ($("onlyActive").checked && sh.param !== activeKey) continue;
-    drawShape(sh, param(sh.param).color, sh.id === selectedId);
-  }
-  // live preview
-  if (drag?.kind === "circle") {
-    const r2 = Math.hypot(drag.cur.x - drag.start.x, drag.cur.y - drag.start.y);
-    drawShape({ type: "circle", ...circleFromImg(drag.start, r2) }, param(activeKey).color, false, true);
-  }
+  const tool = curTool();
+  const hot = tool === "eraser" && hover && !drag ? hitsAt(...Object.values(toScr(hover.x, hover.y)), 12, true)[0] : null;
+  for (const sh of ann.shapes) if (visible(sh)) drawShape(sh, param(sh.param).color, hot && sh.id === hot.id);
   const p = param(activeKey);
-  const startPt = drag?.kind === "line" ? drag.start : pendingLine;
-  if (startPt && hover && p.tool === "line") {
-    const a = toScr(startPt.x, startPt.y), b = toScr(hover.x, hover.y);
+  // live preview of the shape being drawn
+  if (drag?.kind === "circle" || (pending?.kind === "circle" && hover)) {
+    const a = drag?.kind === "circle" ? drag.a : pending.a, b = drag?.kind === "circle" ? drag.cur : hover;
+    drawShape({ type: "circle", ...circleFromDiameter(a, b) }, p.color, false, true);
+    const sa = toScr(a.x, a.y), sb = toScr(b.x, b.y);
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = p.color; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke(); ctx.setLineDash([]);
+    for (const q of [sa, sb]) { ctx.beginPath(); ctx.arc(q.x, q.y, 4, 0, 7); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke(); }
+  }
+  if (drag?.kind === "line" || (pending?.kind === "line" && hover)) {
+    const a = drag?.kind === "line" ? drag.a : pending.a, b = drag?.kind === "line" ? drag.cur : hover;
+    const sa = toScr(a.x, a.y), sb = toScr(b.x, b.y);
     ctx.setLineDash([6, 4]); ctx.strokeStyle = p.color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (drag?.kind === "curve") drawShape({ type: "curve", points: drag.pts.map((q) => norm(q.x, q.y)) }, p.color, false, true);
+  // eraser ring follows the pointer
+  if (tool === "eraser" && hover) {
+    const s = toScr(hover.x, hover.y);
+    ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, 7); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
   }
 }
-function circleFromImg(c, rImg) { const n = norm(c.x, c.y); return { cx: n.x, cy: n.y, r: rImg / img.naturalWidth }; }
-function drawShape(sh, color, selected, preview) {
-  ctx.lineWidth = selected ? 4 : 3; ctx.strokeStyle = selected ? "#fff" : color;
+function drawShape(sh, color, hot, preview) {
+  ctx.lineWidth = hot ? 4.5 : 3; ctx.strokeStyle = hot ? "#fff" : color; ctx.lineJoin = "round"; ctx.lineCap = "round";
   if (sh.type === "circle") {
     const c = denorm(sh.cx, sh.cy), p = toScr(c.x, c.y), r = sh.r * img.naturalWidth * view.s;
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(r, 2), 0, Math.PI * 2);
     ctx.fillStyle = color + (preview ? "30" : "22"); ctx.fill(); ctx.stroke();
   } else {
-    const a = denorm(sh.x1, sh.y1), b = denorm(sh.x2, sh.y2), pa = toScr(a.x, a.y), pb = toScr(b.x, b.y);
-    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
-    for (const q of [pa, pb]) { ctx.beginPath(); ctx.arc(q.x, q.y, 3.5, 0, 7); ctx.fillStyle = selected ? "#fff" : color; ctx.fill(); }
+    const pts = shapeScreenPoints(sh);
+    if (!pts.length) return;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    if (sh.type === "line") for (const q of pts) { ctx.beginPath(); ctx.arc(q.x, q.y, 3.5, 0, 7); ctx.fillStyle = hot ? "#fff" : color; ctx.fill(); }
   }
 }
 
-/* ---------- interaction ---------- */
+/* ---------- undo / redo ---------- */
+function pushUndo(op) { undoStack.push(op); redoStack = []; updateButtons(); }
+function addShape(sh) { sh.id = uid(); ann.shapes.push(sh); pushUndo({ op: "add", shape: sh }); renderCards(); scheduleSave(); draw(); }
+function removeShapes(list) {
+  const idsSet = new Set(list.map((s) => s.id));
+  const gone = ann.shapes.filter((s) => idsSet.has(s.id));
+  if (!gone.length) return;
+  ann.shapes = ann.shapes.filter((s) => !idsSet.has(s.id));
+  pushUndo({ op: "del", shapes: gone });
+  renderCards(); scheduleSave(); draw();
+}
+function undo() {
+  const a = undoStack.pop(); if (!a || !ann) return;
+  if (a.op === "add") ann.shapes = ann.shapes.filter((s) => s.id !== a.shape.id);
+  else ann.shapes.push(...a.shapes);
+  redoStack.push(a); renderCards(); scheduleSave(); updateButtons(); draw();
+}
+function redo() {
+  const a = redoStack.pop(); if (!a || !ann) return;
+  if (a.op === "add") ann.shapes.push(a.shape);
+  else { const g = new Set(a.shapes.map((s) => s.id)); ann.shapes = ann.shapes.filter((s) => !g.has(s.id)); }
+  undoStack.push(a); renderCards(); scheduleSave(); updateButtons(); draw();
+}
+function updateButtons() {
+  $("undo").style.opacity = undoStack.length ? 1 : 0.45;
+  $("redo").style.opacity = redoStack.length ? 1 : 0.45;
+}
+function cancelInProgress() { const had = !!(pending || drag); pending = null; drag = null; draw(); return had; }
+
+/* ---------- pointer interaction ---------- */
 function pos(e) { const r = cv.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; }
 cv.addEventListener("contextmenu", (e) => e.preventDefault());
 cv.addEventListener("wheel", (e) => {
   e.preventDefault();
-  const { sx, sy } = pos(e), before = toImg(sx, sy);
-  const f = Math.exp(-e.deltaY * 0.0015);
-  view.s = Math.max(0.05, Math.min(12, view.s * f));
-  view.ox = sx - before.x * view.s; view.oy = sy - before.y * view.s;
-  draw();
+  const { sx, sy } = pos(e);
+  zoomAt(sx, sy, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016)));
 }, { passive: false });
 
+function eraseAt(sx, sy, first) {
+  const hits = hitsAt(sx, sy, 12, first); // first click can also hit by clicking inside a circle; dragging uses edges only
+  const targets = first ? hits.slice(0, 1) : hits;
+  if (targets.length) { drag.erased.push(...targets); const g = new Set(targets.map((s) => s.id)); ann.shapes = ann.shapes.filter((s) => !g.has(s.id)); renderCards(); draw(); }
+}
 cv.addEventListener("pointerdown", (e) => {
   if (!ann) return;
   cv.setPointerCapture(e.pointerId);
   const { sx, sy } = pos(e);
   if (e.button === 2 || e.button === 1 || spaceDown) { drag = { kind: "pan", sx, sy, ox: view.ox, oy: view.oy }; cv.style.cursor = "grabbing"; return; }
   if (e.button !== 0) return;
-  const pt = toImg(sx, sy), p = param(activeKey);
-  if (selectMode) { const h = hit(sx, sy); selectedId = h ? h.id : null; draw(); return; }
-  if (p.tool === "circle") drag = { kind: "circle", start: pt, cur: pt, sx, sy };
-  else drag = { kind: "line", start: pendingLine || pt, wasPending: !!pendingLine, cur: pt, sx, sy };
+  const pt = toImg(sx, sy), tool = curTool();
+  if (tool === "eraser") { drag = { kind: "erase", erased: [] }; eraseAt(sx, sy, true); return; }
+  if (tool === "curve") { drag = { kind: "curve", pts: [pt], sx, sy, last: { sx, sy } }; return; }
+  // circle and line: second click of a click-click shape finishes it right away
+  if (pending && pending.kind === tool) {
+    const a = pending.a, far = Math.hypot((pt.x - a.x) * view.s, (pt.y - a.y) * view.s) >= 4;
+    pending = null;
+    if (far) finishTwoPoint(tool, a, pt);
+    draw(); return;
+  }
+  pending = null;
+  drag = { kind: tool, a: pt, cur: pt, sx, sy };
 });
 cv.addEventListener("pointermove", (e) => {
   const { sx, sy } = pos(e), pt = toImg(sx, sy);
   hover = pt;
-  if (drag?.kind === "pan") { view.ox = drag.ox + (sx - drag.sx); view.oy = drag.oy + (sy - drag.sy); }
+  if (drag?.kind === "pan") { view.ox = drag.ox + (sx - drag.sx); view.oy = drag.oy + (sy - drag.sy); clampView(); }
+  else if (drag?.kind === "erase") eraseAt(sx, sy, false);
+  else if (drag?.kind === "curve") { if (Math.hypot(sx - drag.last.sx, sy - drag.last.sy) >= 2) { drag.pts.push(pt); drag.last = { sx, sy }; } }
   else if (drag) drag.cur = pt;
   draw();
 });
@@ -263,78 +375,94 @@ cv.addEventListener("pointerup", (e) => {
   if (!drag) return;
   const { sx, sy } = pos(e), d = drag; drag = null; cv.style.cursor = "crosshair";
   if (d.kind === "pan") return;
-  const moved = Math.hypot(sx - d.sx, sy - d.sy);
-  if (d.kind === "circle") {
-    const rImg = moved < 5 ? 14 / view.s : Math.hypot(d.cur.x - d.start.x, d.cur.y - d.start.y);
-    addShape({ type: "circle", param: activeKey, ...circleFromImg(d.start, rImg) });
-  } else {
-    if (d.wasPending || moved >= 8) {
-      const a = norm(d.start.x, d.start.y), b = norm(d.cur.x, d.cur.y);
-      if (Math.hypot(d.cur.x - d.start.x, d.cur.y - d.start.y) * view.s >= 4) addShape({ type: "line", param: activeKey, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
-      pendingLine = null;
-    } else pendingLine = d.start;
+  if (d.kind === "erase") { if (d.erased.length) { pushUndo({ op: "del", shapes: d.erased }); scheduleSave(); } draw(); return; }
+  if (d.kind === "curve") {
+    if (d.pts.length >= 3) { const simple = simplify(d.pts, 1.2 / view.s); addShape({ type: "curve", param: activeKey, points: simple.map((q) => norm(q.x, q.y)) }); }
+    draw(); return;
   }
+  const moved = Math.hypot(sx - d.sx, sy - d.sy);
+  if (moved >= 8) finishTwoPoint(d.kind, d.a, d.cur);   // press, drag, release
+  else pending = { kind: d.kind, a: d.a };                // a click: the other end now follows the pointer
   draw();
 });
-function addShape(sh) {
-  sh.id = uid(); ann.shapes.push(sh);
-  undoStack.push({ op: "add", id: sh.id });
-  renderCards(); scheduleSave();
+function finishTwoPoint(kind, a, b) {
+  if (kind === "circle") addShape({ type: "circle", param: activeKey, ...circleFromDiameter(a, b) });
+  else { const n1 = norm(a.x, a.y), n2 = norm(b.x, b.y); addShape({ type: "line", param: activeKey, x1: n1.x, y1: n1.y, x2: n2.x, y2: n2.y }); }
 }
-function removeShape(id) {
-  const i = ann.shapes.findIndex((s) => s.id === id); if (i < 0) return;
-  const [sh] = ann.shapes.splice(i, 1);
-  undoStack.push({ op: "del", shape: sh });
-  if (selectedId === id) selectedId = null;
-  renderCards(); scheduleSave(); draw();
-}
-function undo() {
-  const a = undoStack.pop(); if (!a || !ann) return;
-  if (a.op === "add") { const i = ann.shapes.findIndex((s) => s.id === a.id); if (i >= 0) ann.shapes.splice(i, 1); }
-  else ann.shapes.push(a.shape);
-  renderCards(); scheduleSave(); draw();
+/* Douglas-Peucker: keeps a free curve's shape with far fewer points. tol is in image pixels. */
+function simplify(pts, tol) {
+  if (pts.length < 3) return pts;
+  let max = 0, at = 0;
+  for (let i = 1; i < pts.length - 1; i++) { const d = distSeg(pts[i].x, pts[i].y, pts[0].x, pts[0].y, pts.at(-1).x, pts.at(-1).y); if (d > max) { max = d; at = i; } }
+  if (max <= tol) return [pts[0], pts.at(-1)];
+  return [...simplify(pts.slice(0, at + 1), tol).slice(0, -1), ...simplify(pts.slice(at), tol)];
 }
 
+/* ---------- keyboard ---------- */
+function setTool(t) {
+  if (t === "eraser") eraser = true;
+  else { eraser = false; toolFor[activeKey] = t; }
+  pending = null; drag = null; renderCards(); renderTop(); renderToolbar(); draw();
+}
+function setActive(k) { activeKey = k; pending = null; drag = null; renderCards(); renderTop(); renderToolbar(); draw(); }
 window.addEventListener("keydown", (e) => {
-  if (e.target instanceof HTMLInputElement && e.target.type === "number") { if (e.key === "Enter") e.target.blur(); return; }
+  if (e.target instanceof HTMLInputElement) { if (e.key === "Enter" || e.key === "Escape") e.target.blur(); return; }
   if (e.key === " ") { spaceDown = true; cv.style.cursor = "grab"; e.preventDefault(); return; }
-  if (e.ctrlKey && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); return; }
-  if (e.key >= "1" && e.key <= "6") { setActive(PARAMS[Number(e.key) - 1].key); return; }
-  if (e.key.toLowerCase() === "v") { selectMode = !selectMode; selectedId = null; cv.style.cursor = selectMode ? "pointer" : "crosshair"; renderTop(); draw(); return; }
-  if ((e.key === "Delete" || e.key === "Backspace") && selectedId) { removeShape(selectedId); return; }
-  if (e.key === "Escape") { pendingLine = null; drag = null; selectedId = null; draw(); return; }
-  if (e.key === "ArrowRight") { loadImage(idx + 1); return; }
-  if (e.key === "ArrowLeft") { loadImage(idx - 1); return; }
+  if (e.ctrlKey || e.metaKey) {
+    const k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    return;
+  }
+  const k = e.key.toLowerCase();
+  if (k === "escape") { e.preventDefault(); if (!cancelInProgress()) undo(); return; }   // Esc: cancel what you are drawing, else undo
+  if (k === "1") return setTool("circle");
+  if (k === "2") return setTool("line");
+  if (k === "3") return setTool("curve");
+  if (k === "4" || k === "x") return setTool("eraser");
+  const pi = PARAMS.findIndex((p) => p.hot === k);
+  if (pi >= 0) return setActive(PARAMS[pi].key);
+  if (k === "tab") { e.preventDefault(); const i = PARAMS.findIndex((p) => p.key === activeKey); return setActive(PARAMS[(i + (e.shiftKey ? PARAMS.length - 1 : 1)) % PARAMS.length].key); }
+  if (k === "+" || k === "=") return zoomCentre(1.3);
+  if (k === "-" || k === "_") return zoomCentre(1 / 1.3);
+  if (k === "0") { fitView(); return draw(); }
+  if (k === "arrowright") return loadImage(idx + 1);
+  if (k === "arrowleft") return loadImage(idx - 1);
 });
-window.addEventListener("keyup", (e) => { if (e.key === " ") { spaceDown = false; cv.style.cursor = selectMode ? "pointer" : "crosshair"; } });
+window.addEventListener("keyup", (e) => { if (e.key === " ") { spaceDown = false; cv.style.cursor = "crosshair"; } });
 
 /* ---------- panels ---------- */
-function setActive(k) { activeKey = k; pendingLine = null; renderCards(); renderTop(); draw(); }
 function renderTop() {
-  const p = param(activeKey);
-  $("where").textContent = `Photo ${idx + 1} of ${ids.length}  |  ${selectMode ? "SELECT mode (V to leave)" : p.label + ": " + (p.tool === "circle" ? "draw circles" : "draw straight lines")}`;
+  const p = param(activeKey), t = curTool();
+  $("where").textContent = `Photo ${idx + 1} of ${ids.length}  |  ${p.label}: ${t === "eraser" ? "ERASER (click a mark to remove it)" : TOOL_LABEL[t]}`;
   $("who").textContent = "Annotator: " + annotator;
+}
+function renderToolbar() {
+  document.querySelectorAll("#toolbar [data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === curTool()));
 }
 function renderCards() {
   const box = $("cards"); box.innerHTML = "";
-  PARAMS.forEach((p, i) => {
+  PARAMS.forEach((p) => {
     const n = ann.shapes.filter((s) => s.param === p.key).length, v = ann.scores[p.key];
     const el = document.createElement("div");
     el.className = "card" + (p.key === activeKey ? " active" : "") + (Number.isFinite(v) ? "" : " unscored");
-    el.innerHTML = `<div class="row"><span class="swatch" style="background:${p.color}"></span><span class="name">${i + 1}. ${p.label}</span><span class="meta">${p.tool === "circle" ? "circles" : "lines"}: ${n}</span></div>
+    const chips = ["circle", "line", "curve"].map((t) => `<button class="chip${toolFor[p.key] === t && !eraser ? " on" : ""}" data-t="${t}" title="${TOOL_LABEL[t]}">${TOOL_ICON[t]}${TOOL_LABEL[t]}</button>`).join("");
+    el.innerHTML = `<div class="row"><span class="swatch" style="background:${p.color}"></span><span class="name">${p.label}</span><span class="meta">marks: ${n} &middot; <kbd>${p.hot.toUpperCase()}</kbd></span></div>
+      <div class="chips">${chips}</div>
       <div class="score"><input type="range" min="1" max="100" value="${Number.isFinite(v) ? v : 50}"><input type="number" min="1" max="100" placeholder="1-100" value="${Number.isFinite(v) ? v : ""}"></div>`;
     el.addEventListener("click", (e) => {
+      if (e.target.closest(".chip")) { activeKey = p.key; setTool(e.target.closest(".chip").dataset.t); return; }
       if (activeKey === p.key) return;
       if (e.target instanceof HTMLInputElement) {
         // Clicking a score box must not rebuild the cards (that would drop the cursor): just move the highlight.
-        activeKey = p.key; pendingLine = null;
+        activeKey = p.key; pending = null;
         [...box.children].forEach((c, k) => c.classList.toggle("active", PARAMS[k].key === p.key));
-        renderTop(); draw();
+        renderTop(); renderToolbar(); draw();
       } else setActive(p.key);
     });
     const [rng, num] = el.querySelectorAll("input");
     const set = (val) => { const x = Math.max(1, Math.min(100, Math.round(Number(val)))); if (!Number.isFinite(x)) return; ann.scores[p.key] = x; rng.value = x; num.value = x; el.classList.remove("unscored"); scheduleSave(); };
     rng.addEventListener("input", () => set(rng.value));
+    rng.addEventListener("change", () => rng.blur());
     num.addEventListener("change", () => { if (num.value === "") { ann.scores[p.key] = null; el.classList.add("unscored"); scheduleSave(); } else set(num.value); });
     box.appendChild(el);
   });
@@ -345,17 +473,22 @@ function renderList() {
     const pr = progress[id], b = document.createElement("button");
     b.className = i === idx ? "cur" : "";
     b.innerHTML = `<span class="dot ${pr?.done ? "done" : pr?.scored || pr?.shapes ? "part" : ""}"></span>#${i + 1}`;
-    b.addEventListener("click", () => loadImage(i));
+    b.addEventListener("click", () => { b.blur(); loadImage(i); });
     box.appendChild(b);
   });
   box.scrollTop = keep;
 }
-function renderAll() { renderList(); renderCards(); renderTop(); draw(); }
+function renderAll() { renderList(); renderCards(); renderTop(); renderToolbar(); updateButtons(); draw(); }
 
-$("prev").onclick = () => loadImage(idx - 1);
-$("next").onclick = () => loadImage(idx + 1);
-$("undo").onclick = undo;
-$("nextTodo").onclick = () => { for (let k = 1; k <= ids.length; k++) { const j = (idx + k) % ids.length; if (!progress[ids[j]]?.done) return loadImage(j); } setStatus("All photos are finished"); };
+document.querySelectorAll("#toolbar [data-tool]").forEach((b) => b.addEventListener("click", () => { b.blur(); setTool(b.dataset.tool); }));
+$("undo").onclick = (e) => { e.currentTarget.blur(); undo(); };
+$("redo").onclick = (e) => { e.currentTarget.blur(); redo(); };
+$("zin").onclick = (e) => { e.currentTarget.blur(); zoomCentre(1.3); };
+$("zout").onclick = (e) => { e.currentTarget.blur(); zoomCentre(1 / 1.3); };
+$("zfit").onclick = (e) => { e.currentTarget.blur(); fitView(); draw(); };
+$("prev").onclick = (e) => { e.currentTarget.blur(); loadImage(idx - 1); };
+$("next").onclick = (e) => { e.currentTarget.blur(); loadImage(idx + 1); };
+$("nextTodo").onclick = (e) => { e.currentTarget.blur(); for (let k = 1; k <= ids.length; k++) { const j = (idx + k) % ids.length; if (!progress[ids[j]]?.done) return loadImage(j); } setStatus("All photos are finished"); };
 ["onlyActive", "bright", "contrast"].forEach((id) => $(id).addEventListener("input", draw));
 window.addEventListener("resize", () => { resize(); if (img) { fitView(); draw(); } });
 window.addEventListener("beforeunload", () => { if (ann) navigator.sendBeacon?.(`api/annotation/${ann.imageId}?annotator=${encodeURIComponent(annotator)}`, new Blob([JSON.stringify(ann)], { type: "application/json" })); });
@@ -369,7 +502,7 @@ window.addEventListener("beforeunload", () => { if (ann) navigator.sendBeacon?.(
   localStorage.setItem("annot_name", annotator);
   ids = await api("api/images");
   progress = await api(`api/progress?annotator=${encodeURIComponent(annotator)}`);
-  if (!ids.length) { setStatus("No photos found in medixora/data/images"); return; }
+  if (!ids.length) { setStatus("No photos found in the data folder"); return; }
   resize();
   const last = Number(localStorage.getItem("annot_last_" + annotator));
   const firstTodo = ids.findIndex((id) => !progress[id]?.done);
