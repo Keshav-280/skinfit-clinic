@@ -99,7 +99,7 @@
       Score every parameter from <b>1 to 100</b>. <b>100 = best skin, 1 = worst</b> (the same direction as the app).<br>
       <b>Choose a parameter:</b> <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> <kbd>Y</kbd> (or <kbd>Tab</kbd>), or click its card.<br>
       <b>Choose the shape for that parameter:</b> <kbd>1</kbd> circle &middot; <kbd>2</kbd> line &middot; <kbd>3</kbd> free curve. Each parameter remembers its own shape. <kbd>4</kbd> or <kbd>X</kbd> = eraser.<br>
-      <b>Circle:</b> click one end of the circle's width, then move: the opposite end follows your pointer. Click again to finish (or press, drag, release).<br>
+      <b>Circle:</b> click to drop a circle of the standard size (a faint outline shows it before you click). To make it bigger or smaller, press and drag instead: the circle's width runs from where you pressed to your pointer.<br>
       <b>Line:</b> click the start, click the end (or press and drag).<br>
       <b>Free curve:</b> press, draw, release.<br>
       <b>Eraser:</b> click a mark to remove it, or drag across several.<br>
@@ -113,12 +113,12 @@
 </div>
 <script>
 const PARAMS = [
-  { key: "active_acne",    label: "Active acne",      tool: "circle", color: "#ff5c61", hot: "q" },
-  { key: "acne_scars",     label: "Acne scars",       tool: "circle", color: "#ffb02e", hot: "w" },
-  { key: "pigmentation",   label: "Pigmentation",     tool: "circle", color: "#b07cff", hot: "e" },
-  { key: "under_eye",      label: "Under-eye",        tool: "circle", color: "#5b8cff", hot: "r" },
-  { key: "wrinkles",       label: "Wrinkles",         tool: "line",   color: "#25d0b4", hot: "t" },
-  { key: "sagging_volume", label: "Sagging & volume", tool: "line",   color: "#4ad57f", hot: "y" },
+  { key: "active_acne",    label: "Active acne",      tool: "circle", color: "#ff5c61", hot: "q", r0: 20 },
+  { key: "acne_scars",     label: "Acne scars",       tool: "circle", color: "#ffb02e", hot: "w", r0: 24 },
+  { key: "pigmentation",   label: "Pigmentation",     tool: "circle", color: "#b07cff", hot: "e", r0: 30 },
+  { key: "under_eye",      label: "Under-eye",        tool: "circle", color: "#5b8cff", hot: "r", r0: 60 },
+  { key: "wrinkles",       label: "Wrinkles",         tool: "line",   color: "#25d0b4", hot: "t", r0: 24 },
+  { key: "sagging_volume", label: "Sagging & volume", tool: "line",   color: "#4ad57f", hot: "y", r0: 24 },
 ];
 const TOOL_ICON = {
   circle: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>',
@@ -273,13 +273,22 @@ function draw() {
   for (const sh of ann.shapes) if (visible(sh)) drawShape(sh, param(sh.param).color, hot && sh.id === hot.id);
   const p = param(activeKey);
   // live preview of the shape being drawn
-  if (drag?.kind === "circle" || (pending?.kind === "circle" && hover)) {
-    const a = drag?.kind === "circle" ? drag.a : pending.a, b = drag?.kind === "circle" ? drag.cur : hover;
-    drawShape({ type: "circle", ...circleFromDiameter(a, b) }, p.color, false, true);
-    const sa = toScr(a.x, a.y), sb = toScr(b.x, b.y);
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = p.color; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke(); ctx.setLineDash([]);
-    for (const q of [sa, sb]) { ctx.beginPath(); ctx.arc(q.x, q.y, 4, 0, 7); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke(); }
+  if (tool === "circle" && hover && !drag?.kind?.startsWith?.("pan")) {
+    const dragging = drag?.kind === "circle" && Math.hypot((drag.cur.x - drag.a.x) * view.s, (drag.cur.y - drag.a.y) * view.s) >= 8;
+    if (dragging) {
+      // dragging: the circle's width runs from where you pressed to the pointer, so the far end is always under the pointer
+      const a = drag.a, b = drag.cur;
+      drawShape({ type: "circle", ...circleFromDiameter(a, b) }, p.color, false, true);
+      const sa = toScr(a.x, a.y), sb = toScr(b.x, b.y);
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = p.color; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke(); ctx.setLineDash([]);
+      for (const q of [sa, sb]) { ctx.beginPath(); ctx.arc(q.x, q.y, 4, 0, 7); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke(); }
+    } else {
+      // a click will drop a circle of the standard size, centred on the pointer: show it faintly first
+      const c = drag?.kind === "circle" ? drag.a : hover, s0 = toScr(c.x, c.y), r0 = p.r0 * view.s;
+      ctx.beginPath(); ctx.arc(s0.x, s0.y, r0, 0, 7); ctx.fillStyle = p.color + "18"; ctx.fill();
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
+    }
   }
   if (drag?.kind === "line" || (pending?.kind === "line" && hover)) {
     const a = drag?.kind === "line" ? drag.a : pending.a, b = drag?.kind === "line" ? drag.cur : hover;
@@ -392,6 +401,7 @@ cv.addEventListener("pointermove", (e) => {
   else if (drag) drag.cur = pt;
   draw();
 });
+cv.addEventListener("pointerleave", () => { hover = null; draw(); });
 cv.addEventListener("pointerup", (e) => {
   if (!drag) return;
   const { sx, sy } = pos(e), d = drag; drag = null; cv.style.cursor = "crosshair";
@@ -402,8 +412,11 @@ cv.addEventListener("pointerup", (e) => {
     draw(); return;
   }
   const moved = Math.hypot(sx - d.sx, sy - d.sy);
-  if (moved >= 8) finishTwoPoint(d.kind, d.a, d.cur);   // press, drag, release
-  else pending = { kind: d.kind, a: d.a };                // a click: the other end now follows the pointer
+  if (d.kind === "circle") {
+    if (moved >= 8) finishTwoPoint("circle", d.a, d.cur);                            // drag: sized by the drag
+    else { const n = norm(d.a.x, d.a.y); addShape({ type: "circle", param: activeKey, cx: n.x, cy: n.y, r: param(activeKey).r0 / img.naturalWidth }); } // click: standard size
+  } else if (moved >= 8) finishTwoPoint(d.kind, d.a, d.cur);                       // line: press, drag, release
+  else pending = { kind: d.kind, a: d.a };                                           // line: a click starts it, the next click ends it
   draw();
 });
 function finishTwoPoint(kind, a, b) {
