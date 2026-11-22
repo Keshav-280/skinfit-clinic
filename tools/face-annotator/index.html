@@ -62,6 +62,10 @@
       <span class="pill" id="status">&nbsp;</span>
     </div>
     <div id="toolbar">
+      <button class="tb" data-view="left" title="Look at the left side photo (A)">Left <kbd>A</kbd></button>
+      <button class="tb" data-view="front" title="Front photo, where you draw (S)">Front <kbd>S</kbd></button>
+      <button class="tb" data-view="right" title="Look at the right side photo (D)">Right <kbd>D</kbd></button>
+      <span class="sep"></span>
       <button class="tb" data-tool="circle" title="Circle (1)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>Circle <kbd>1</kbd></button>
       <button class="tb" data-tool="line" title="Straight line (2)"><svg viewBox="0 0 24 24"><path d="M4 20 20 4"/></svg>Line <kbd>2</kbd></button>
       <button class="tb" data-tool="curve" title="Free curve (3)"><svg viewBox="0 0 24 24"><path d="M3 17c3-12 6-12 9-4s6 5 9-6"/></svg>Free curve <kbd>3</kbd></button>
@@ -103,6 +107,7 @@
       <b>Line:</b> click the start, click the end (or press and drag).<br>
       <b>Free curve:</b> press, draw, release.<br>
       <b>Eraser:</b> click a mark to remove it, or drag across several.<br>
+      <b>See the same person from the side:</b> <kbd>A</kbd> left &middot; <kbd>S</kbd> front &middot; <kbd>D</kbd> right (or the buttons). Side photos are for looking at; you draw on the front photo, and pressing a tool or parameter key takes you back to it.<br>
       <kbd>Esc</kbd> undoes (and cancels a shape you are in the middle of). <kbd>Ctrl</kbd>+<kbd>Y</kbd> redoes.<br>
       <b>Zoom:</b> pinch on the touchpad, mouse wheel, or <kbd>+</kbd> <kbd>-</kbd>; <kbd>0</kbd> to fit.<br>
       <b>Look around at the same zoom:</b> two-finger scroll on the touchpad, the <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd> keys (hold <kbd>Shift</kbd> to go faster), or hold <kbd>Space</kbd> and drag.<br>
@@ -132,7 +137,11 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 let ids = [], idx = 0, progress = {};
 let annotator = "";
 let ann = null;               // current annotation
-let img = null;               // current HTMLImageElement
+let img = null;               // the photo being shown (front, left or right)
+let frontImg = null;          // the front photo: the only one marks are drawn on
+let viewName = "front";       // "front" | "left" | "right"
+let views = {};               // which side photos exist for each person
+const sideCache = new Map();  // "<id>_left" -> HTMLImageElement
 let view = { s: 1, ox: 0, oy: 0 };
 let activeKey = PARAMS[0].key;
 const toolFor = Object.fromEntries(PARAMS.map((p) => [p.key, p.tool])); // each parameter remembers its own shape
@@ -178,19 +187,42 @@ async function loadImage(i) {
   await saveNow();
   idx = Math.max(0, Math.min(ids.length - 1, i));
   const id = ids[idx];
-  pending = null; drag = null; undoStack = []; redoStack = [];
+  pending = null; drag = null; undoStack = []; redoStack = []; sideCache.clear(); // photos are large: keep only this person's sides in memory
   const [saved, el] = await Promise.all([
     api(`api/annotation/${id}?annotator=${encodeURIComponent(annotator)}`),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `img/${id}.jpg`; }),
   ]);
-  img = el;
+  frontImg = el; img = el; viewName = "front";
   ann = saved ? Object.assign(blank(id), saved) : blank(id);
   ann.imageSize = { w: img.naturalWidth, h: img.naturalHeight };
   fitView();
   renderAll();
+  for (const side of ["left", "right"]) if (views[id]?.[side]) loadSide(id, side).catch(() => {}); // warm the cache so switching is instant
   localStorage.setItem("annot_last_" + annotator, String(idx));
   setStatus(saved ? "Loaded" : "New photo");
 }
+
+/* ---------- left / front / right ---------- */
+function loadSide(id, side) {
+  const key = id + "_" + side;
+  if (sideCache.has(key)) return sideCache.get(key);
+  const pr = new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => { sideCache.delete(key); rej(new Error("missing")); }; im.src = `img/${id}_${side}.jpg`; });
+  sideCache.set(key, pr);
+  return pr;
+}
+async function showView(name) {
+  if (!ann || name === viewName) return;
+  cancelInProgress();
+  const id = ids[idx];
+  if (name === "front") { img = frontImg; }
+  else {
+    if (!views[id]?.[name]) { setStatus(`No ${name} photo for this person`); return; }
+    try { img = await loadSide(id, name); } catch { setStatus(`Could not load the ${name} photo`); return; }
+  }
+  viewName = name;
+  fitView(); renderTop(); renderToolbar(); draw();
+}
+const isFront = () => viewName === "front";
 
 /* ---------- view: zoom and pan ---------- */
 /* The bottom strip is kept free for the toolbar, so the photo fits above it. */
@@ -268,6 +300,7 @@ function draw() {
   ctx.filter = `brightness(${$("bright").value}) contrast(${$("contrast").value})`;
   ctx.drawImage(img, view.ox, view.oy, img.naturalWidth * view.s, img.naturalHeight * view.s);
   ctx.restore();
+  if (!isFront()) return;   // a side photo is only for looking at: no marks, no shapes in progress
   const tool = curTool();
   const hot = tool === "eraser" && hover && !drag ? hitsAt(...Object.values(toScr(hover.x, hover.y)), 12, true)[0] : null;
   for (const sh of ann.shapes) if (visible(sh)) drawShape(sh, param(sh.param).color, hot && sh.id === hot.id);
@@ -379,6 +412,7 @@ cv.addEventListener("pointerdown", (e) => {
   const { sx, sy } = pos(e);
   if (e.button === 2 || e.button === 1 || spaceDown) { drag = { kind: "pan", sx, sy, ox: view.ox, oy: view.oy }; cv.style.cursor = "grabbing"; return; }
   if (e.button !== 0) return;
+  if (!isFront()) { setStatus("Side photos are for looking at. Press S to go back to the front photo and draw."); return; }
   const pt = toImg(sx, sy), tool = curTool();
   if (tool === "eraser") { drag = { kind: "erase", erased: [] }; eraseAt(sx, sy, true); return; }
   if (tool === "curve") { drag = { kind: "curve", pts: [pt], sx, sy, last: { sx, sy } }; return; }
@@ -434,11 +468,12 @@ function simplify(pts, tol) {
 
 /* ---------- keyboard ---------- */
 function setTool(t) {
+  if (!isFront()) showView("front");
   if (t === "eraser") eraser = true;
   else { eraser = false; toolFor[activeKey] = t; }
   pending = null; drag = null; renderCards(); renderTop(); renderToolbar(); draw();
 }
-function setActive(k) { activeKey = k; pending = null; drag = null; renderCards(); renderTop(); renderToolbar(); draw(); }
+function setActive(k) { if (!isFront()) showView("front"); activeKey = k; pending = null; drag = null; renderCards(); renderTop(); renderToolbar(); draw(); }
 window.addEventListener("keydown", (e) => {
   if (e.target instanceof HTMLInputElement) { if (e.key === "Enter" || e.key === "Escape") e.target.blur(); return; }
   if (e.key === " ") { spaceDown = true; cv.style.cursor = "grab"; e.preventDefault(); return; }
@@ -449,6 +484,9 @@ window.addEventListener("keydown", (e) => {
   }
   const k = e.key.toLowerCase();
   if (k === "escape") { e.preventDefault(); if (!cancelInProgress()) undo(); return; }   // Esc: cancel what you are drawing, else undo
+  if (k === "a") return showView("left");
+  if (k === "s") return showView("front");
+  if (k === "d") return showView("right");
   if (k === "1") return setTool("circle");
   if (k === "2") return setTool("line");
   if (k === "3") return setTool("curve");
@@ -477,11 +515,20 @@ window.addEventListener("keyup", (e) => { if (e.key === " ") { spaceDown = false
 /* ---------- panels ---------- */
 function renderTop() {
   const p = param(activeKey), t = curTool();
-  $("where").textContent = `Photo ${idx + 1} of ${ids.length}  |  ${p.label}: ${t === "eraser" ? "ERASER (click a mark to remove it)" : TOOL_LABEL[t]}`;
+  $("where").textContent = isFront()
+    ? `Photo ${idx + 1} of ${ids.length}  |  ${p.label}: ${t === "eraser" ? "ERASER (click a mark to remove it)" : TOOL_LABEL[t]}`
+    : `Photo ${idx + 1} of ${ids.length}  |  ${viewName.toUpperCase()} SIDE photo, for looking only (S = back to the front)`;
   $("who").textContent = "Annotator: " + annotator;
 }
 function renderToolbar() {
-  document.querySelectorAll("#toolbar [data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === curTool()));
+  document.querySelectorAll("#toolbar [data-tool]").forEach((b) => b.classList.toggle("on", isFront() && b.dataset.tool === curTool()));
+  const id = ids[idx];
+  document.querySelectorAll("#toolbar [data-view]").forEach((b) => {
+    const n = b.dataset.view, ok = n === "front" || !!views[id]?.[n];
+    b.classList.toggle("on", n === viewName);
+    b.style.opacity = ok ? 1 : 0.4;
+    b.title = ok ? b.title.replace(" (not available)", "") : `No ${n} photo for this person (not available)`;
+  });
 }
 function renderCards() {
   const box = $("cards"); box.innerHTML = "";
@@ -525,6 +572,7 @@ function renderList() {
 function renderAll() { renderList(); renderCards(); renderTop(); renderToolbar(); updateButtons(); draw(); }
 
 document.querySelectorAll("#toolbar [data-tool]").forEach((b) => b.addEventListener("click", () => { b.blur(); setTool(b.dataset.tool); }));
+document.querySelectorAll("#toolbar [data-view]").forEach((b) => b.addEventListener("click", () => { b.blur(); showView(b.dataset.view); }));
 $("undo").onclick = (e) => { e.currentTarget.blur(); undo(); };
 $("redo").onclick = (e) => { e.currentTarget.blur(); redo(); };
 $("zin").onclick = (e) => { e.currentTarget.blur(); zoomCentre(1.3); };
@@ -548,6 +596,7 @@ window.addEventListener("beforeunload", () => { if (ann) navigator.sendBeacon?.(
   localStorage.setItem("annot_name", annotator);
   ids = await api("api/images");
   progress = await api(`api/progress?annotator=${encodeURIComponent(annotator)}`);
+  try { views = await api("api/views"); } catch { views = {}; }
   if (!ids.length) { setStatus("No photos found in the data folder"); return; }
   resize();
   const last = Number(localStorage.getItem("annot_last_" + annotator));

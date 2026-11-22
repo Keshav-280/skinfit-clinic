@@ -11,7 +11,7 @@
 //   PUBLIC_URL   public address printed with the secret link            (default http://localhost:PORT)
 //   ACCESS_KEY   overrides the key stored in DATA_DIR/.access-key
 //
-// Photos:       DATA_DIR/images/<id>.jpg
+// Photos:       DATA_DIR/images/<id>.jpg (front), <id>_left.jpg, <id>_right.jpg (reference views)
 // Annotations:  DATA_DIR/annotations/<annotator>/<id>.json
 import http from "node:http";
 import fs from "node:fs";
@@ -88,6 +88,12 @@ const server = http.createServer((req, res) => {
       return send(res, 200, fs.readFileSync(path.join(here, "index.html")), "text/html; charset=utf-8");
     }
     if (req.method === "GET" && p === "/api/images") return send(res, 200, listIds());
+    if (req.method === "GET" && p === "/api/views") {
+      // which side photos exist for each person (the front photo is <id>.jpg; sides are <id>_left.jpg / <id>_right.jpg)
+      const v = {};
+      for (const id of listIds()) v[id] = { left: fs.existsSync(path.join(imgDir, `${id}_left.jpg`)), right: fs.existsSync(path.join(imgDir, `${id}_right.jpg`)) };
+      return send(res, 200, v);
+    }
     if (req.method === "GET" && p === "/api/progress") return send(res, 200, summary(cleanName(url.searchParams.get("annotator"))));
     if (req.method === "GET" && p === "/api/export") {
       // Everything every annotator has saved, as one file (open it in the same browser to download).
@@ -97,9 +103,9 @@ const server = http.createServer((req, res) => {
         "Content-Disposition": 'attachment; filename="face-annotations.json"',
       });
     }
-    let m = p.match(/^\/img\/([0-9a-f]{12})\.jpg$/);
+    let m = p.match(/^\/img\/([0-9a-f]{12})(_left|_right)?\.jpg$/);
     if (req.method === "GET" && m) {
-      const f = path.join(imgDir, `${m[1]}.jpg`);
+      const f = path.join(imgDir, `${m[1]}${m[2] || ""}.jpg`);
       if (!fs.existsSync(f)) return send(res, 404, { error: "not found" });
       res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600", "X-Robots-Tag": "noindex, nofollow" });
       return fs.createReadStream(f).pipe(res);

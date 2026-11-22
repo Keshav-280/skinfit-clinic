@@ -1,10 +1,12 @@
-// Downloads ONE front white-light photo + the numbers for each Medixora report link.
+// Downloads the FRONT, LEFT and RIGHT white-light photos + the numbers for each Medixora report link.
 //
 //   node fetch-front.mjs links-short.txt
 //
 // The file has one report link per line (full links, or share.google short links). Nothing else is downloaded.
 // Output (in DATA_DIR, or ./data next to this file; never committed to git):
-//   data/images/<id>.jpg   front white-light photo
+//   data/images/<id>.jpg        front white-light photo (annotated)
+//   data/images/<id>_left.jpg   left side photo (reference)
+//   data/images/<id>_right.jpg  right side photo (reference)
 //   data/labels/<id>.json  scores and counts only (no name, phone, avatar, device or link)
 //   data/index.csv         id, status
 // <id> is an anonymous hash of the report number. Links and tokens are never printed or saved.
@@ -84,6 +86,28 @@ const slim = (r) => ({
   count: Number(r.Count), area: r.Area, rate: r.Rate,
 });
 
+// Camera angles in a Medixora report: FaceType 1 = LEFT side, 2 = FRONT, 3 = RIGHT side. LightType 1 = white light.
+// The front photo is <id>.jpg (what gets annotated); the sides are <id>_left.jpg and <id>_right.jpg (for looking at).
+const VIEWS = [
+  { name: "front", suffix: "", faceType: "2" },
+  { name: "left", suffix: "_left", faceType: "1" },
+  { name: "right", suffix: "_right", faceType: "3" },
+];
+
+async function download(url, dest) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+      return true;
+    } catch {
+      await sleep(1500 * attempt);
+    }
+  }
+  return false;
+}
+
 let done = 0, skipped = 0, failed = 0;
 for (const [i, link] of lines.entries()) {
   const p = parse(await resolve(link));
@@ -93,69 +117,52 @@ for (const [i, link] of lines.entries()) {
     continue;
   }
   const id = crypto.createHash("sha256").update(p.sn).digest("hex").slice(0, 12);
-  const imgPath = path.join(out, "images", `${id}.jpg`);
-  if (fs.existsSync(imgPath)) {
+  const file = (v) => path.join(out, "images", `${id}${v.suffix}.jpg`);
+  const labelPath = path.join(out, "labels", `${id}.json`);
+  const need = VIEWS.filter((v) => !fs.existsSync(file(v)));
+  if (!need.length) {
     skipped++;
-    continue;
+    continue; // front, left and right are all saved already
   }
   const r = await getJson(p);
   if (!r.ok) {
     console.log(`#${i + 1}: ${r.why}`);
-    fs.appendFileSync(indexPath, `${id},failed: ${r.why}\n`);
+    fs.appendFileSync(indexPath, `${id},failed: ${r.why}
+`);
     failed++;
     await sleep(700);
     continue;
   }
   const d = r.d;
-  // Camera angles in a Medixora report: FaceType 1 = left side, 2 = FRONT, 3 = right side. LightType 1 = white light.
-  const front = (d.CollectImage ?? []).find((c) => String(c.FaceType) === "2" && String(c.LightType) === "1");
-  if (!front?.Pic) {
-    console.log(`#${i + 1}: no front photo in this report`);
-    fs.appendFileSync(indexPath, `${id},failed: no front photo\n`);
-    failed++;
-    continue;
+  const got = [], missing = [];
+  for (const v of need) {
+    const c = (d.CollectImage ?? []).find((x) => String(x.FaceType) === v.faceType && String(x.LightType) === "1");
+    if (!c?.Pic) { missing.push(v.name); continue; }
+    if (await download(c.Pic, file(v))) got.push(v.name);
+    else missing.push(v.name + " (download failed)");
   }
-  let img = null;
-  for (let attempt = 1; attempt <= 4 && !img?.ok; attempt++) {
-    try {
-      img = await fetch(front.Pic);
-    } catch {
-      img = null;
-      await sleep(1500 * attempt);
-    }
+  if (!fs.existsSync(labelPath)) {
+    const labels = {
+      id,
+      sex: d.Customer?.Sex ?? null,
+      age: d.Customer?.Age ?? null,
+      predicted_age: d.PredictedAge ?? null,
+      skin_type: d.SkinType ?? null,
+      comprehensive_score: Number(d.Score),
+      level: d.LevelName ?? null,
+      scanned_at: d.DeviceCreateTime ?? d.ServerCreateTime ?? null,
+      skin_colour_ita: d.FaceSkinColor?.ITA ?? null,
+      results: (d.ResultDetail ?? []).map(slim),
+      regions: (d.RegionResult ?? []).map((x) => ({ region: x.Region, type: x.Type, face: x.FaceType, count: Number(x.Count), area: x.Area, ratio: x.Ratio })),
+    };
+    fs.writeFileSync(labelPath, JSON.stringify(labels, null, 1));
   }
-  if (!img?.ok) {
-    console.log(`#${i + 1}: photo download failed (${img.status})`);
-    fs.appendFileSync(indexPath, `${id},failed: photo ${img.status}\n`);
-    failed++;
-    continue;
-  }
-  let bytes;
-  try {
-    bytes = Buffer.from(await img.arrayBuffer());
-  } catch {
-    console.log(`#${i + 1}: photo download interrupted`);
-    failed++;
-    continue;
-  }
-  fs.writeFileSync(imgPath, bytes);
-  const labels = {
-    id,
-    sex: d.Customer?.Sex ?? null,
-    age: d.Customer?.Age ?? null,
-    predicted_age: d.PredictedAge ?? null,
-    skin_type: d.SkinType ?? null,
-    comprehensive_score: Number(d.Score),
-    level: d.LevelName ?? null,
-    scanned_at: d.DeviceCreateTime ?? d.ServerCreateTime ?? null,
-    skin_colour_ita: d.FaceSkinColor?.ITA ?? null,
-    results: (d.ResultDetail ?? []).map(slim),
-    regions: (d.RegionResult ?? []).map((x) => ({ region: x.Region, type: x.Type, face: x.FaceType, count: Number(x.Count), area: x.Area, ratio: x.Ratio })),
-  };
-  fs.writeFileSync(path.join(out, "labels", `${id}.json`), JSON.stringify(labels, null, 1));
-  fs.appendFileSync(indexPath, `${id},ok\n`);
-  done++;
-  console.log(`#${i + 1}: saved ${id} (${(fs.statSync(imgPath).size / 1024).toFixed(0)} KB)`);
+  fs.appendFileSync(indexPath, `${id},${got.length ? "ok" : "failed"}: ${got.join("+") || "-"}${missing.length ? " missing " + missing.join("+") : ""}
+`);
+  if (got.length) done++;
+  else failed++;
+  console.log(`#${i + 1}: ${id} saved ${got.join(", ") || "nothing"}${missing.length ? "; missing " + missing.join(", ") : ""}`);
   await sleep(700);
 }
-console.log(`\nDone. Saved ${done}, already had ${skipped}, failed ${failed}. Folder: ${out}`);
+console.log(`
+Done. Patients updated ${done}, already complete ${skipped}, failed ${failed}. Folder: ${out}`);
