@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { aiReview, feedbackBrief, runVerified } from "@/src/lib/aiVerified";
+import { aiReview, feedbackBrief, quoteIsReal, runVerified } from "@/src/lib/aiVerified";
 
 const pass = async () => ({ pass: true, issues: [] as string[] });
 
@@ -83,5 +83,37 @@ describe("feedbackBrief", () => {
     expect(brief).toContain("- a");
     expect(brief).toContain("- b");
     expect(brief).toContain("again from scratch");
+  });
+});
+
+describe("checker issues must quote real words", () => {
+  const cand = { summary: "Your pimples look calmer this week.", next_step: { label: "Book an in-person visit" } };
+  it("accepts a quote that is in the text and rejects an invented one", () => {
+    expect(quoteIsReal(cand, "Your pimples look calmer")).toBe(true);
+    expect(quoteIsReal(cand, "The headline contains a digit")).toBe(false);
+    expect(quoteIsReal(cand, "")).toBe(false);
+  });
+});
+
+describe("a draft with only tone points is published when nothing cleaner arrives", () => {
+  it("falls back to the best soft draft", async () => {
+    const out = await runVerified({
+      name: "soft",
+      maxAttempts: 2,
+      generate: async () => "stiff but safe",
+      review: async () => ({ pass: false, issues: ["Rule 8: tone"], soft: true }),
+      codeCheck: () => [],
+    });
+    expect(out).toBe("stiff but safe");
+  });
+  it("never publishes a draft with a code problem", async () => {
+    const out = await runVerified({
+      name: "soft2",
+      maxAttempts: 2,
+      generate: async () => "bad",
+      review: async () => ({ pass: false, issues: ["Rule 8: tone"], soft: true }),
+      codeCheck: () => ["number not in the data"],
+    });
+    expect(out).toBeNull();
   });
 });

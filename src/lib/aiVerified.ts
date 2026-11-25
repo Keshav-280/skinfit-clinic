@@ -12,7 +12,33 @@
  */
 import OpenAI from "openai";
 
-export type Review = { pass: boolean; issues: string[] };
+/**
+ * `soft` means the checker found only tone or repetition points, nothing unsafe or wrong. Such a draft
+ * is kept as a fallback and published if no later draft is fully clean (a slightly stiff report is
+ * better than none). Hard problems (medical, wrong numbers, wrong direction, causation) never publish.
+ */
+export type Review = { pass: boolean; issues: string[]; soft?: boolean };
+
+/** Rules 5 (tone) and 6 (repeat) of REPORT_REVIEW_RULES. Callers using other rulebooks pass softRules. */
+const SOFT_RULES = new Set([5, 6]);
+
+const flat = (v: unknown): string => {
+  const out: string[] = [];
+  const walk = (n: unknown) => {
+    if (typeof n === "string") out.push(n);
+    else if (Array.isArray(n)) n.forEach(walk);
+    else if (n && typeof n === "object") Object.values(n as Record<string, unknown>).forEach(walk);
+  };
+  walk(v);
+  return out.join(" ").toLowerCase().replace(/\s+/g, " ");
+};
+
+/** True when the quoted words really appear in the candidate (guards against invented problems). */
+export function quoteIsReal(candidate: unknown, quote: string): boolean {
+  const q = quote.toLowerCase().replace(/\s+/g, " ").replace(/^["'\s]+|["'\s]+$/g, "");
+  if (q.length < 4) return false;
+  return flat(candidate).includes(q.slice(0, 40));
+}
 
 export const MAX_ATTEMPTS = 4;
 
@@ -35,8 +61,13 @@ export function writerModel(): string {
 }
 
 /** Model that checks the text. Independent setting so it can be stronger than the writer. */
+/** Newer reasoning models (gpt-5.x, o-series) only accept their default temperature. */
+export function temperatureFor(model: string, t: number): { temperature?: number } {
+  return /^(gpt-5|o\d)/i.test(model) ? {} : { temperature: t };
+}
+
 export function reviewerModel(): string {
-  return process.env.OPENAI_REVIEW_MODEL?.trim() || "gpt-4o";
+  return process.env.OPENAI_REVIEW_MODEL?.trim() || "gpt-5.4";
 }
 
 /** The rulebook the checker enforces on every kind of text. */
@@ -53,9 +84,33 @@ Fail the candidate if ANY of these is true:
 8. It is cold, mechanical, templated, shaming, alarming, or uses jargon, or it reads as if it were not written about THIS patient. It should sound like a warm, caring clinic coordinator speaking plainly to one person.
 9. It gives advice that is unsafe or off-limits for a non-doctor: it must send the patient to the clinic for anything medical or worrying.
 10. It contains emojis, exclamation marks, or says anything about internal SkinFit business.
-11. It repeats what the patient can already see on the same screen (it merely lists scores, point changes, dates or check-in figures), or says the same thing in two places. A number is fine only where the rules for that kind of text allow it. Text should ADD meaning (why, what it means, what to do), never restate the screen.
+11. Two parts of the candidate repeat each other almost word for word, or it only lists figures the patient can already see without adding meaning. Explaining in plain words what a change means is fine and wanted. A number is fine only where the rules for that kind of text allow it.
 
-Reply with ONLY JSON: {"pass": true|false, "issues": ["each specific problem, quoting the words"]}. If it passes, issues must be [].`;
+Clarifications so you do not fail good text (you must still be strict about the rules above):
+- Plain visible-skin words are NOT diagnoses or conditions: dark spots, dark circles, pimples, breakouts, acne marks, uneven tone, fine lines, firmness. Only real medical names (melasma, rosacea, eczema, psoriasis, cancer and the like) fail rule 1.
+- Everyday habits are NOT medical advice: sunscreen, moisturiser, a gentle cleanser, sleep, water, a hat or sunglasses, not picking at spots, changing pillowcases. Only a named medicine, prescription product, active ingredient (retinol, acids, niacinamide, vitamin C and the like), brand or dose fails rule 2.
+- For a drop, the words "dipped", "a few more pimples are showing", "needs a little care" and "steady" are CORRECT. Only "declined", "decline", "decreased" and "trending down" fail rule 4. Check direction against previous_score_100 and score_100 in the DATA: lower now means worse skin.
+- Hedged observational pairing is allowed and wanted ("may have", "tends to", "lined up with", "weeks when you slept less have tended to show more pimples"). Only a flat statement of cause ("X caused Y", "because of X your skin Y") fails rule 5.
+- Judge only what you can quote. Never report a problem you cannot point to in the candidate.
+
+Reply with ONLY JSON: {"issues": [{"rule": <number of the rule broken, 1 to 11, or 12 for an extra rule>, "quote": "the exact words copied from the CANDIDATE", "why": "one short sentence"}]}. Every issue MUST quote words that really appear in the CANDIDATE; an issue without a real quote is ignored. If nothing is wrong, reply {"issues": []}.`;
+
+/**
+ * A short rulebook for the two written reports. The generic rulebook above is too broad for them:
+ * it made the checker invent problems and block good reports. Exact things (digits, banned words,
+ * lengths, doctor names, counts) are checked by code, so they are deliberately NOT here.
+ * Rules 5 and 6 are "soft": tone and repetition only.
+ */
+export const REPORT_REVIEW_RULES = `You are the safety checker for a skin report a clinic patient will read. Another AI wrote the CANDIDATE from the DATA. Check ONLY the six rules below. Each problem you report must quote words that really appear in the CANDIDATE.
+
+1. MEDICAL. The text names a medicine, prescription product, active ingredient (retinol, acids, niacinamide, vitamin C and the like), brand, dose, treatment, device or procedure (peel, laser, microneedling), or names a real medical condition or diagnosis (melasma, rosacea, eczema, psoriasis, cancer). NOT problems: the phrases "your doctor", "message your doctor" and "book an in-person visit" (they are the required next-step wording); plain skin words (dark spots, dark circles, pimples, breakouts, acne marks, uneven tone, fine lines, firmness) and everyday habits (sunscreen, cleanser, moisturiser, sleep, water, hats, not picking spots).
+2. DIRECTION AND SIZE. Use focus_parameters in the DATA: movement improved means the area looks better, declined means worse (for breakouts: MORE pimples showing), holding means steady. The text must not say the opposite for an area. A move of 1 or 2 points must not be called a change. For an IMPROVEMENT the size words are: 3 or 4 points "a little", 5 to 9 "clearly", 10 or more "a lot" (do not police size words for a dip: "needs a little care" and "dipped" are fine). If capture_quality in the DATA shows poor lighting or framing, holding off a comparison for the affected areas is CORRECT and must not be flagged. When capture_state in the DATA is degraded, every area has movement tracking: any statement that an area changed, dipped, improved or is steady compared with last time is wrong, but saying how an area looks today is fine. The words dipped, dip, slight dip, steady, stable and a little are all correct. Do NOT judge the overall score, only areas that have data. The same area has several names: breakouts and pimples are Active acne; acne marks are Acne scars; dark spots and uneven tone are Pigmentation; dark circles are Under-eye; fine lines are Wrinkles; firmness is Sagging and volume.
+3. WRONG NUMBER. A score or number in the text that is not in the DATA, or that is attached to the wrong area.
+4. CAUSE. A flat statement that one thing caused another ("X caused Y", "because of X your skin Y"). Hedged wording (may, tends to, lined up with) is fine. This rule is only about causes of skin changes; ignore reasons given for suggesting a doctor visit ("photos can only show so much" is fine).
+5. TONE (soft). Cold, clinical, alarming or shaming wording.
+6. REPEAT (soft). Two parts say almost exactly the same sentence.
+
+Reply with ONLY JSON: {"issues": [{"rule": 1-6, "quote": "exact words copied from the CANDIDATE", "why": "one short sentence"}]}. If nothing is wrong reply {"issues": []}. Never report a problem you cannot quote.`;
 
 /** Layer 2: a strict AI checker. Fails closed: if it cannot run, the text is rejected. */
 export async function aiReview(input: {
@@ -63,6 +118,10 @@ export async function aiReview(input: {
   data: unknown;
   candidate: unknown;
   extraRules?: string;
+  /** Replaces the generic rulebook (used by the reports). */
+  rules?: string;
+  /** Rule numbers in `rules` that are only tone or repetition. Default: 5 and 6. */
+  softRules?: number[];
 }): Promise<Review> {
   const client = verifiedClient();
   if (!client) return { pass: false, issues: ["checker unavailable"] };
@@ -70,12 +129,12 @@ export async function aiReview(input: {
     const completion = await client.chat.completions.create(
       {
       model: reviewerModel(),
-      temperature: 0,
+      ...temperatureFor(reviewerModel(), 0),
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `${REVIEW_RULES}${input.extraRules ? `\n\nExtra rules for this text:\n${input.extraRules}` : ""}`,
+          content: `${input.rules ?? REVIEW_RULES}${input.extraRules ? `\n\nExtra rules for this text:\n${input.extraRules}` : ""}`,
         },
         {
           role: "user",
@@ -86,12 +145,20 @@ export async function aiReview(input: {
       { timeout: 120_000 }
     );
     const raw = completion.choices[0]?.message?.content ?? "";
-    const parsed = JSON.parse(raw) as { pass?: unknown; issues?: unknown };
-    const issues = Array.isArray(parsed.issues)
-      ? parsed.issues.filter((x): x is string => typeof x === "string")
-      : [];
-    const pass = parsed.pass === true && issues.length === 0;
-    return { pass, issues };
+    const parsed = JSON.parse(raw) as { issues?: unknown };
+    const list = Array.isArray(parsed.issues) ? parsed.issues : [];
+    const real: Array<{ rule: number; text: string }> = [];
+    for (const it of list) {
+      if (!it || typeof it !== "object") continue;
+      const o = it as { rule?: unknown; quote?: unknown; why?: unknown };
+      const quote = typeof o.quote === "string" ? o.quote : "";
+      if (!quoteIsReal(input.candidate, quote)) continue; // a problem that cannot be quoted is not a problem
+      real.push({ rule: Number(o.rule) || 12, text: `Rule ${Number(o.rule) || "?"}: "${quote.slice(0, 120)}" - ${typeof o.why === "string" ? o.why : "breaks the rule"}` });
+    }
+    const pass = real.length === 0;
+    const softSet = input.softRules ? new Set(input.softRules) : input.rules ? SOFT_RULES : new Set([8, 11]);
+    const soft = !pass && real.every((r) => softSet.has(r.rule));
+    return { pass, issues: real.map((r) => r.text), soft };
   } catch {
     return { pass: false, issues: ["checker failed to run"] };
   }
@@ -118,6 +185,7 @@ export async function runVerified<T>(opts: {
 }): Promise<T | null> {
   const max = opts.maxAttempts ?? MAX_ATTEMPTS;
   let feedback: string[] | null = null;
+  let softFallback: T | null = null;
   for (let attempt = 1; attempt <= max; attempt++) {
     const candidate = await opts.generate(feedback);
     if (candidate == null) {
@@ -133,11 +201,16 @@ export async function runVerified<T>(opts: {
       if (attempt > 1) console.info(`[verified:${opts.name}] passed on attempt ${attempt}`);
       return candidate;
     }
+    if (review.soft && codeIssues.length === 0) softFallback = candidate;
     feedback = [...review.issues, ...codeIssues];
     console.warn(`[verified:${opts.name}] attempt ${attempt} rejected`, {
       aiChecker: review.issues.slice(0, 4),
       code: codeIssues.slice(0, 4),
     });
+  }
+  if (softFallback != null) {
+    console.warn(`[verified:${opts.name}] publishing the best draft: only tone/repetition points remained`);
+    return softFallback;
   }
   console.error(`[verified:${opts.name}] no draft passed after ${max} attempts; showing nothing`);
   return null;

@@ -1,11 +1,13 @@
 import OpenAI from "openai";
 import { INITIAL_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/initialReportPrompt";
 import { UPDATE_REPORT_SYSTEM_PROMPT } from "@/src/lib/report/updateReportPrompt";
-import { validateGeneratedReport } from "@/src/lib/reportCopyGuard";
+import { reportProseView, validateGeneratedReport } from "@/src/lib/reportCopyGuard";
 import {
   aiReview,
+  REPORT_REVIEW_RULES,
   feedbackBrief,
   runVerified,
+  temperatureFor,
   writerModel,
 } from "@/src/lib/aiVerified";
 
@@ -59,7 +61,7 @@ async function chatJson(
     const completion = await client.chat.completions.create(
       {
         model: writerModel(),
-        temperature: 0.4,
+        ...temperatureFor(writerModel(), 0.4),
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
@@ -151,9 +153,9 @@ async function chatJsonValidated(system: string, payload: unknown, kind: string)
       aiReview({
         kind: `${kind} (a patient report: headline, summary, per-area findings, actions, next step)`,
         data: payload,
-        candidate,
-        extraRules:
-          'This report screen already shows every score, point change, date and weekly check-in figure in its own cards, so numbers are rationed. Digits are allowed ONLY in: the summary (at most two numbers, both scores or changes that are in the DATA), an action detail (the area\'s score once as "X out of 100", or a habit number such as "6 to 8 hours of sleep"), and share_card.line. FAIL the candidate if the headline, a finding, an attribution line, the week recap highlight or the next step contains a digit, or if any sentence only lists scores or the weekly check-in figures instead of adding meaning. FAIL it if two parts say the same thing. FAIL it if any doctor is named (it must say "your doctor"). FAIL it if it names an ingredient, product, treatment, device or medicine, calls a 1 or 2 point move a change, or uses internal words (pigmentation, Medixora, lesions, baseline, parameters, markers, algorithm) or filler words (lovely, great, really, just, truly). The next step label must start "Message your doctor about" or be exactly "Book an in-person visit". It must feel warm, personal and human: like a calm friend from the clinic, not a data readout, and a parent could read it once and know what to do this week.',
+        candidate: reportProseView(candidate),
+        rules: REPORT_REVIEW_RULES,
+        softRules: [5, 6],
       }),
     codeCheck: (candidate) => validateGeneratedReport(candidate, payload),
   });

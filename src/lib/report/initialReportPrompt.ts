@@ -21,6 +21,7 @@ This is the first time this person sees their skin through kAI. They should fini
 - Bring in the skincare know-how from the house rules below: their skin type, one or two everyday skincare ideas, and the routine step that fits them. Keep it short. A client should be able to read the whole report in under a minute.
 
 ## Rules
+- Every focus_parameters row has a plain_name: call each area by it (never the key or the name field).
 - Score each parameter independently on 0-100 (higher is best; patient scores run 0-90). Copy the score_100 and position values from current_scan.grades exactly. Uniform scores across all parameters are almost always wrong.
 - Never use letter grades (A-E, B+, C−, etc.). Patients only see 0-100.
 - On a first scan there is no movement. Describe where the skin is today with plain words like "shows" and "right now". Never use "improved", "declined", "better", "worse", "up" or "down", and avoid mechanical verbs like "mapped" or "recorded".
@@ -60,7 +61,7 @@ Choose ONE:
 Never write a doctor's name anywhere in the report: say "your doctor".
 
 ## Output
-Return valid JSON only. No markdown fences.
+Return valid JSON only. No markdown fences. The example shows the shape and the level of care only. Never copy its wording, names, scores or sentences: write everything from this patient's own data.
 
 {
   "status": "published",

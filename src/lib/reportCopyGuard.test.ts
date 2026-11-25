@@ -74,7 +74,7 @@ describe("validateGeneratedReport", () => {
 
   it("rejects internal words, filler words and long headlines or summaries", () => {
     const i1 = validateGeneratedReport({ parameters: [{ finding: "Your pigmentation looks lovely and really even." }] }, payload).join(" | ");
-    expect(i1).toContain("internal word");
+    expect(i1).toContain("is internal");
     expect(i1).toContain("filler word");
     expect(validateGeneratedReport({ overall: { headline: "one two three four five six seven eight nine ten eleven twelve thirteen" } }, payload).join(" | ")).toContain("headline is longer");
     expect(validateGeneratedReport({ summary: "Short summary." }, payload).join(" | ")).toContain("summary is");

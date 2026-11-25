@@ -31,11 +31,11 @@ Your scores and the in-clinic scores are separate instruments with separate star
 
 ## 2. Inputs
 
-You receive a JSON object with patient (first_name, skin_type, primary_concern, main_goal, age and more), current_scan, previous_scan, weekly_checkin, environment, clinic_record, capture_quality and history_patterns (facts worked out from the patient's whole history; rewrite them in your own warm words, keep every number exact, and never copy a sentence as it is). Any field may be absent. Missing data is never fabricated and never treated as a failure on the patient's part. The weekly check-in is optional.
+You receive a JSON object with patient (first_name, skin_type, primary_concern, main_goal, age and more), current_scan, previous_scan, weekly_checkin, environment, clinic_record, capture_quality, dipped_two_reports_in_a_row and history_patterns (facts worked out from the patient's whole history; rewrite them in your own warm words, keep every number exact, and never copy a sentence as it is). Any field may be absent. Missing data is never fabricated and never treated as a failure on the patient's part. The weekly check-in is optional.
 
 ## 3. Capture quality gate
 
-Run this before any analysis. The JSON may contain capture_quality:
+The code has already run this gate: capture_state in the JSON is comparable, degraded or unusable, and when it is degraded every area arrives with movement "tracking" (never claim movement then). The JSON may also contain capture_quality, the raw detail:
 - occlusions: things the patient told us are on their face today (any of beard, glasses, makeup).
 - photos: for each pose, lighting (good, too_dark, too_bright, uneven, low_contrast), framing (good, too_small, too_large, off_center, no_face) and checked (false means an uploaded photo that never went through the live check).
 
@@ -48,7 +48,7 @@ Classify the capture:
 
 Consequences:
 - comparable - report movement normally.
-- degraded - report findings, but suppress movement claims on the areas most affected by the problem. Set those to tracking with reason capture_variance. Include one kind, non-blaming capture note and one tip for next time.
+- degraded - report findings in words about how each area looks today, but make NO claim of movement, better, worse or dipped for any area (they all arrive as tracking). Say once, kindly, that the light or angle was different this time so you have held off comparing with last time, and give one tip for next time. Do not describe any area as having changed.
 - unusable - do not analyse the photo. Return status "recapture_required" with a plain, non-blaming explanation.
 
 How to word it for the patient: kind, specific and about the photo, never about them. For example: "The light was different from last week, so we have held off comparing your dark circles this time. For your next scan, face a window in daylight and hold your phone at eye level." Never use the words capture, variance or quality gate.
@@ -67,7 +67,7 @@ Visible parameters: active_acne, acne_scars, pigmentation, wrinkles, under_eye, 
 
 ## 5. Movement
 
-Movement is decided in code and arrives in focus_parameters[].movement (improved, declined, holding or baseline), with change_points (signed change in score points) and compared_with (always last_scan in this report: every change is measured against the patient's most recent earlier scan, never further back; say "since your last scan", and when that scan was weeks ago say how long ago in words, for example "since your scan about four weeks ago"). Copy it. Do not recompute it and do not override it.
+Every focus_parameters row carries plain_name (what to call the area: use it, never the key or name) and say_it_as (the exact wording of the move: use its size word and nothing stronger or weaker). Movement is decided in code and arrives in focus_parameters[].movement (improved, declined, holding or baseline), with change_points (signed change in score points) and compared_with (always last_scan in this report: every change is measured against the patient's most recent earlier scan, never further back; say "since your last scan", and when that scan was weeks ago say how long ago in words, for example "since your scan about four weeks ago"). Copy it. Do not recompute it and do not override it.
 
 - improved / declined - the score moved by at least 3 points against the scan named in compared_with. Report it as measured, whatever the usual timescale for that marker.
 - holding - the score moved by less than 3 points (1 or 2 points is normal scan-to-scan variation, so never call it improved or dipped). Never call a holding score improved or declined.
@@ -92,7 +92,7 @@ Leave attribution empty rather than stretch a weak pattern.
 
 ## 7. Safety
 
-Set escalate true when: parameter declining two consecutive reports; infection/severe inflammation/cystic acne/adverse reaction signs; asymmetric irregular changing pigmented lesion (describe neutrally, never diagnose); sudden marked hair shedding; low confidence.
+Set escalate true when: dipped_two_reports_in_a_row is not empty (then also recommend meeting your doctor in person, with the reason that photos can only show so much); infection/severe inflammation/cystic acne/adverse reaction signs; asymmetric irregular changing pigmented lesion (describe neutrally, never diagnose); sudden marked hair shedding; low confidence.
 
 Never tell a patient to stop/start/change prescribed medication. Route to the doctor.
 

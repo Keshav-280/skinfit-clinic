@@ -7,7 +7,8 @@ import { scans, scheduleEvents, users } from "@/src/db/schema";
 import { isPatientClinicVisited } from "@/src/lib/patientClinicVisit";
 import { buildKaiReportParamRowsFromRag } from "@/src/lib/kaiReportMapping";
 import { scoreToGrade } from "@/src/lib/report/gradeComputation";
-import { captureQualityForReport } from "@/src/lib/captureMeta";
+import { areasDippedTwice, decorateFocusRows, PLAIN_AREA, plainWords } from "@/src/lib/report/movementWords";
+import { applyCaptureToMovement, captureQualityForReport, captureStateOf } from "@/src/lib/captureMeta";
 import { computeMultiWeekInsights } from "@/src/lib/multiWeekPatternAnalysis";
 import { loadWellnessAndWeatherForScan } from "@/src/lib/wellnessWeatherContext";
 import { scanDisplayResolvedFromRow } from "@/src/lib/resolveScanDisplayScores";
@@ -166,6 +167,7 @@ export async function generateAndPersistKaiReport(
       focus_parameters: paramRows.map((p) => ({
         key: p.key,
         name: p.name,
+        plain_name: PLAIN_AREA[p.key] ?? null,
         score_100: p.score100,
       })),
     });
@@ -239,17 +241,23 @@ export async function generateAndPersistKaiReport(
       },
       weekly_checkin: wellness,
       capture_quality: captureQualityForReport(row.scores) ?? null,
-      history_patterns: (await computeMultiWeekInsights(userId)).map((i) => i.text),
-      focus_parameters: paramRows.map((p) => {
-        const prev = prevParamRows.find((x) => x.key === p.key);
-        return {
-          key: p.key,
-          name: p.name,
-          score_100: p.score100,
-          previous_score_100: prev?.score100 ?? null,
-          ...focusParamMovement(scoreHistory.byReportKey[p.key], true),
-        };
-      }),
+      capture_state: captureStateOf(captureQualityForReport(row.scores)),
+      history_patterns: (await computeMultiWeekInsights(userId)).map((i) => plainWords(i.text)),
+      dipped_two_reports_in_a_row: areasDippedTwice(scoreHistory.byReportKey),
+      // Poor light or framing: no area may claim movement; the code says so, not the AI.
+      focus_parameters: decorateFocusRows(applyCaptureToMovement(
+        paramRows.map((p) => {
+          const prev = prevParamRows.find((x) => x.key === p.key);
+          return {
+            key: p.key,
+            name: p.name,
+            score_100: p.score100,
+            previous_score_100: prev?.score100 ?? null,
+            ...focusParamMovement(scoreHistory.byReportKey[p.key], true),
+          };
+        }),
+        captureStateOf(captureQualityForReport(row.scores))
+      )),
       environment: environment ?? {},
       clinic_record: {
         doctor: "the clinic doctor (never name them in the report)",

@@ -139,6 +139,27 @@ export function validateGeneratedReport(report: unknown, payload: unknown): stri
   collectProse(report, "", prose);
   const data = JSON.stringify(payload ?? "");
   const issues: string[] = [];
+  // Facts from the payload that the report must honour (checked exactly, not left to an AI).
+  const pl = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
+  const allProse = prose.map((x) => x.text).join(" \n ");
+  const cq = pl.capture_quality as { occlusions?: string[] } | null | undefined;
+  const occMap: Record<string, RegExp> = { beard: /\bbeard\b/i, glasses: /\bglasses\b/i, makeup: /\bmake-?up\b/i };
+  for (const o of cq?.occlusions ?? []) {
+    if (occMap[o] && !occMap[o].test(allProse)) issues.push(`the patient told us about their ${o}: say once, neutrally, which area it makes less reliable`);
+  }
+  if (pl.capture_state === "degraded" && !/\b(light|lighting|angle|photo)\b/i.test(allProse)) {
+    issues.push("the light or angle was not good this time: say so kindly once and give one tip for next time");
+  }
+  const wc = pl.weekly_checkin;
+  if (!wc || (typeof wc === "object" && Object.keys(wc as object).length === 0)) {
+    const n = (allProse.match(/check-?in/gi) ?? []).length;
+    if (n > 1) issues.push("the weekly check-in is mentioned more than once (mention it once, lightly)");
+  }
+  const dips = pl.dipped_two_reports_in_a_row;
+  if (Array.isArray(dips) && dips.length > 0 && (report as Record<string, unknown> | null)?.status !== "recapture_required") {
+    if ((report as Record<string, unknown> | null)?.escalate !== true) issues.push("an area dipped two reports in a row: escalate must be true");
+    if (!/in[- ]person/i.test(allProse)) issues.push("an area dipped two reports in a row: recommend meeting your doctor in person, calmly");
+  }
   // Structure: three focus steps and at most three area notes (unless the report asks for a recapture).
   const r = (report && typeof report === "object" ? report : {}) as Record<string, unknown>;
   if (r.status !== "recapture_required") {
@@ -160,8 +181,10 @@ export function validateGeneratedReport(report: unknown, payload: unknown): stri
         issues.push(`numbers in ${key} (use words only; the screen already shows the figures)`);
       }
     }
-    if (INTERNAL_TERMS.test(t)) issues.push(`internal word in ${key} (use plain words: dark spots, in-clinic skin analysis, your starting point)`);
-    if (FILLER_WORDS.test(t)) issues.push(`filler word in ${key} (be specific instead of using adjectives)`);
+    const internal = t.match(INTERNAL_TERMS);
+    if (internal) issues.push(`the word "${internal[0]}" in ${key} is internal (use plain words: dark spots, the in-clinic skin analysis, your starting point)`);
+    const filler = t.match(FILLER_WORDS);
+    if (filler) issues.push(`the filler word "${filler[0]}" in ${key} (remove it; be specific instead)`);
     if (key === "headline" && wordCount(t) > 12) issues.push("headline is longer than 12 words");
     if (key === "summary") {
       const w = wordCount(t);
@@ -194,4 +217,26 @@ const GENERIC = {
 
 export function curatedInsight(key: RagKaiParamKey | null | undefined) {
   return (key && CURATED[key]) || GENERIC;
+}
+
+/**
+ * The report as a patient reads it: label, code and figure fields removed, so a checker never judges
+ * a fixed label ("Active acne") or a code ("book_medixora") as if it were written text.
+ */
+export function reportProseView(report: unknown): unknown {
+  const DROP = new Set(["key", "type", "parameter", "factor", "confidence", "movement", "status", "scan_id", "state", "compared_with", "next_reports_on"]);
+  const walk = (n: unknown, parent: string): unknown => {
+    if (Array.isArray(n)) return n.map((x) => walk(x, parent));
+    if (n && typeof n === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(n as Record<string, unknown>)) {
+        if (DROP.has(k)) continue;
+        if (k === "label" && parent === "parameters") continue;
+        out[k] = walk(v, k);
+      }
+      return out;
+    }
+    return n;
+  };
+  return walk(report, "");
 }

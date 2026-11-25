@@ -78,3 +78,29 @@ export function captureQualityForReport(scores: unknown): CaptureMeta | undefine
   if (!scores || typeof scores !== "object") return undefined;
   return sanitizeCaptureMeta((scores as Record<string, unknown>).captureMeta);
 }
+
+export type CaptureState = "comparable" | "degraded" | "unusable";
+
+/**
+ * How trustworthy this scan's photos are for comparing with an earlier scan, decided here in code
+ * (never left to the AI): unusable when the front photo shows no face; degraded when any photo that
+ * went through the live check had lighting or framing that was not good; otherwise comparable.
+ */
+export function captureStateOf(meta: CaptureMeta | undefined | null): CaptureState {
+  if (!meta) return "comparable";
+  const front = meta.photos.find((p) => p.pose === "centre");
+  if (front?.framing === "no_face") return "unusable";
+  const bad = meta.photos.some(
+    (p) => p.checked && ((p.lighting != null && p.lighting !== "good") || (p.framing != null && p.framing !== "good"))
+  );
+  return bad ? "degraded" : "comparable";
+}
+
+/** When the photos are not comparable, no area may claim movement: it becomes "tracking". */
+export function applyCaptureToMovement<T extends { movement?: string; change_points?: number | null; compared_with?: string | null; previous_score_100?: number | null }>(
+  rows: T[],
+  state: CaptureState
+): T[] {
+  if (state === "comparable") return rows;
+  return rows.map((r) => ({ ...r, movement: "tracking", change_points: null, compared_with: null, previous_score_100: null }));
+}
