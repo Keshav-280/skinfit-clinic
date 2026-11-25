@@ -1,9 +1,8 @@
 import { sendExpoPushNotification } from "@/src/lib/expoPush";
+import { pendingPhrase, type PendingItems } from "@/src/lib/reminders/weeklyReminderContent";
 
 export const WEEKLY_REMINDER_PUSH_TITLE =
   "Time for your weekly skin check-in!";
-export const WEEKLY_REMINDER_PUSH_BODY =
-  "Take your AI scan and fill your wellness questionnaire to track your progress.";
 
 /**
  * Send a patient push via Expo Push API (`expo_push_token` on users).
@@ -26,12 +25,13 @@ export async function sendPushNotification(opts: {
 }
 
 export async function sendWeeklyCheckinPush(
-  expoPushToken: string | null | undefined
+  expoPushToken: string | null | undefined,
+  pending: PendingItems
 ): Promise<boolean> {
   return sendPushNotification({
     expoPushToken,
     title: WEEKLY_REMINDER_PUSH_TITLE,
-    body: WEEKLY_REMINDER_PUSH_BODY,
+    body: `Your ${pendingPhrase(pending)} ${pending.scan && pending.checkin ? "are" : "is"} pending this week.`,
     data: { type: "weekly_reminder" },
   });
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, Camera, Heart, TrendingUp, X } from "lucide-react";
 
-const STORAGE_KEY = "skinfit_intro_popup_seen_v2";
+export const STORAGE_KEY = "skinfit_intro_popup_seen_v2";
 const SHOW_DELAY_MS = 3000;
 
 const STEPS = [

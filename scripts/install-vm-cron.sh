@@ -4,6 +4,7 @@
 # - Appointment + routine reminders (every 2 minutes)
 # - kAI weekly (daily 06:00 UTC — per-patient 7-day windows from first scan)
 # - kAI monthly (daily 07:00 UTC — per-patient month windows from first scan)
+# - Weekly reminders to opted-in patients (Sunday 04:30 UTC = 10:00 am IST)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,7 +19,7 @@ fi
 chmod +x "$CALL" "$BACKUP"
 
 LOG_DIR="${LOG_DIR:-/var/log}"
-for f in skinfit-pg-backup.log skinfit-cron-reminders.log skinfit-cron-kai-weekly.log skinfit-cron-kai-monthly.log; do
+for f in skinfit-pg-backup.log skinfit-cron-reminders.log skinfit-cron-kai-weekly.log skinfit-cron-kai-monthly.log skinfit-cron-weekly-reminders.log; do
   touch "$LOG_DIR/$f" 2>/dev/null || sudo touch "$LOG_DIR/$f"
   sudo chown "$(whoami):$(whoami)" "$LOG_DIR/$f" 2>/dev/null || true
 done
@@ -30,6 +31,7 @@ LINES="$(cat <<EOF
 */2 * * * * $CALL appointment-reminders >> $LOG_DIR/skinfit-cron-reminders.log 2>&1
 0 6 * * * $CALL kai-weekly >> $LOG_DIR/skinfit-cron-kai-weekly.log 2>&1
 0 7 * * * $CALL kai-monthly >> $LOG_DIR/skinfit-cron-kai-monthly.log 2>&1
+30 4 * * 0 $CALL weekly-reminders >> $LOG_DIR/skinfit-cron-weekly-reminders.log 2>&1
 EOF
 )"
 

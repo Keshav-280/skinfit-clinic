@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { FamilyWalletCard } from "@/components/dashboard/FamilyWalletCard";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { EmailReminderToggle } from "@/components/dashboard/EmailReminderToggle";
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection";
 import { KaiAboutCard } from "@/components/dashboard/KaiAboutCard";
 import { RewardsCard } from "@/components/dashboard/RewardsCard";
@@ -96,6 +97,7 @@ export default async function ProfilePage() {
         initial={user}
         embedded
         layout="profile-page"
+        remindersSlot={<EmailReminderToggle />}
         walletSlot={
           <>
             <RewardsCard />

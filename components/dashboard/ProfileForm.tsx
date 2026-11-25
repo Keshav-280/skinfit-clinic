@@ -29,6 +29,8 @@ type Props = {
   layout?: "stacked" | "profile-page";
   walletSlot?: ReactNode;
   privacySlot?: ReactNode;
+  /** Extra reminder settings that save on their own (shown on the Reminders tab). */
+  remindersSlot?: ReactNode;
 };
 
 type ProfileTab = "account" | "reminders" | "wallet" | "privacy";
@@ -46,6 +48,7 @@ export function ProfileForm({
   layout = "stacked",
   walletSlot = null,
   privacySlot = null,
+  remindersSlot = null,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<ProfileTab>("account");
@@ -691,6 +694,7 @@ export function ProfileForm({
             {passwordSection}
           </div>
           <div hidden={tab !== "reminders"} className="space-y-5">
+            {remindersSlot}
             {visitRemindersSection}
             {dailyRemindersSection}
           </div>

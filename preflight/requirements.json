@@ -813,12 +813,12 @@
         {
           "type": "present",
           "file": "src/lib/aiVerified.ts",
-          "pattern": "It repeats what the patient can already see"
+          "pattern": "repeat each other almost word for word"
         },
         {
           "type": "present",
           "file": "src/lib/report/generateReportContent.ts",
-          "pattern": "numbers are rationed"
+          "pattern": "REPORT_REVIEW_RULES"
         },
         {
           "type": "present",
@@ -1215,6 +1215,20 @@
           "type": "manual",
           "how": "Item 16 (on hold): run the made-up-patient test script to confirm real AI output passes the code checker (summary 60-80 words, headline under 12 words, at most 2 numbers in the summary)."
         }
+      ]
+    },
+    {
+      "id": "REMINDER-OPT-IN",
+      "title": "Weekly reminders go only to patients who said yes in the popup or profile; Sunday 10 am IST; only pending items; says how to stop",
+      "source": "25 Nov: 'keep Sunday 10 a.m.', 'don't send the mails to every user... a pop-up... only those users will get the reminders and emails'",
+      "checks": [
+        { "type": "present", "file": "src/lib/runWeeklyReminders.ts", "pattern": "listOptedInUserIds" },
+        { "type": "present", "file": "src/lib/reminders/emailPrefs.ts", "pattern": "opted_in = true" },
+        { "type": "present", "file": "app/dashboard/layout.tsx", "pattern": "EmailReminderPrompt" },
+        { "type": "present", "file": "app/dashboard/profile/page.tsx", "pattern": "EmailReminderToggle" },
+        { "type": "present", "file": "scripts/install-vm-cron.sh", "pattern": "CALL weekly-reminders" },
+        { "type": "present", "file": "src/lib/reminders/weeklyReminderContent.ts", "pattern": "reply STOP" },
+        { "type": "test", "file": "src/lib/reminders/weeklyReminderContent.test.ts" }
       ]
     }
   ]

@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { format, startOfWeek } from "date-fns";
 import { db } from "@/src/db";
 import {
@@ -8,15 +8,19 @@ import {
   users,
   wellnessCheckins,
 } from "@/src/db/schema";
-import { sendWeeklyCheckinEmail } from "@/src/lib/emailNotification";
+import { isPlaceholderEmail } from "@/src/lib/auth/placeholderEmail";
+import { sendEmailNotification } from "@/src/lib/emailNotification";
 import { sendWeeklyCheckinPush } from "@/src/lib/pushNotification";
+import { listOptedInUserIds } from "@/src/lib/reminders/emailPrefs";
+import { buildWeeklyReminderEmail } from "@/src/lib/reminders/weeklyReminderContent";
 import { publicAppOrigin } from "@/src/lib/trackerResourceLinks";
-import { sendWeeklyCheckinWhatsApp } from "@/src/lib/whatsappNotification";
 
-export type WeeklyReminderChannel = "push" | "whatsapp" | "email";
+/** WhatsApp is not sent from here: it needs its own consent before it is added. */
+export type WeeklyReminderChannel = "push" | "email";
 
 export type WeeklyRemindersResult = {
   weekYmd: string;
+  optedIn: number;
   candidates: number;
   sent: Record<WeeklyReminderChannel, number>;
   skipped: Record<WeeklyReminderChannel, number>;
@@ -71,87 +75,107 @@ async function logSent(
     });
 }
 
+async function pendingThisWeek(userIds: string[], now: Date) {
+  const weekYmd = currentWeekMondayYmd(now);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const [scanRows, skinScanRows, wellnessRows] = await Promise.all([
+    db
+      .selectDistinct({ userId: scans.userId })
+      .from(scans)
+      .where(and(inArray(scans.userId, userIds), gte(scans.createdAt, weekStart))),
+    db
+      .selectDistinct({ userId: skinScans.userId })
+      .from(skinScans)
+      .where(and(inArray(skinScans.userId, userIds), gte(skinScans.createdAt, weekStart))),
+    db
+      .select({ userId: wellnessCheckins.userId })
+      .from(wellnessCheckins)
+      .where(
+        and(
+          inArray(wellnessCheckins.userId, userIds),
+          eq(wellnessCheckins.weekYmd, weekYmd)
+        )
+      ),
+  ]);
+
+  const scanned = new Set<string>([...scanRows, ...skinScanRows].map((r) => r.userId));
+  const checkedIn = new Set(wellnessRows.map((r) => r.userId));
+  return (userId: string) => ({
+    scan: !scanned.has(userId),
+    checkin: !checkedIn.has(userId),
+  });
+}
+
+/**
+ * Test mode: emails the reminder to one account only, so the founder can see it before the
+ * schedule is switched on. Ignores opt-in and is not logged.
+ */
+export async function sendWeeklyReminderTest(testEmail: string, now = new Date()) {
+  const [user] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${testEmail.trim().toLowerCase()}`)
+    .limit(1);
+  if (!user) return { sent: false, reason: "NO_ACCOUNT_WITH_THIS_EMAIL" };
+  if (isPlaceholderEmail(user.email)) return { sent: false, reason: "NOT_A_REAL_EMAIL" };
+
+  const actual = (await pendingThisWeek([user.id], now))(user.id);
+  // Nothing pending: show the full version so there is still something to check.
+  const pending = actual.scan || actual.checkin ? actual : { scan: true, checkin: true };
+  const mail = buildWeeklyReminderEmail({ name: user.name, origin: publicAppOrigin(), pending });
+  const out = await sendEmailNotification({ to: user.email, ...mail });
+  return { sent: out.ok, reason: out.reason, pending: actual };
+}
+
 export async function runWeeklyReminders(
   now = new Date()
 ): Promise<WeeklyRemindersResult> {
   const weekYmd = currentWeekMondayYmd(now);
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const origin = publicAppOrigin();
-  const dashboardUrl = `${origin}/dashboard`;
-  const scanUrl = `${origin}/dashboard/scan`;
-  const schedulesUrl = `${origin}/dashboard/schedules`;
 
   const result: WeeklyRemindersResult = {
     weekYmd,
+    optedIn: 0,
     candidates: 0,
-    sent: { push: 0, whatsapp: 0, email: 0 },
-    skipped: { push: 0, whatsapp: 0, email: 0 },
-    failed: { push: 0, whatsapp: 0, email: 0 },
+    sent: { push: 0, email: 0 },
+    skipped: { push: 0, email: 0 },
+    failed: { push: 0, email: 0 },
   };
+
+  // Consent first: nobody is contacted unless they said yes. (Also creates the tables.)
+  const optedInIds = await listOptedInUserIds();
+  result.optedIn = optedInIds.length;
+  if (optedInIds.length === 0) return result;
 
   const patients = await db
     .select({
       id: users.id,
       name: users.name,
       email: users.email,
-      phone: users.phone,
-      phoneCountryCode: users.phoneCountryCode,
       expoPushToken: users.expoPushToken,
     })
     .from(users)
-    .where(
-      and(eq(users.role, "patient"), eq(users.onboardingComplete, true))
-    );
+    .where(and(eq(users.role, "patient"), inArray(users.id, optedInIds)));
 
   if (patients.length === 0) return result;
 
-  const patientIds = patients.map((p) => p.id);
-
-  const [scanRows, skinScanRows, wellnessRows] = await Promise.all([
-    db
-      .selectDistinct({ userId: scans.userId })
-      .from(scans)
-      .where(
-        and(inArray(scans.userId, patientIds), gte(scans.createdAt, weekStart))
-      ),
-    db
-      .selectDistinct({ userId: skinScans.userId })
-      .from(skinScans)
-      .where(
-        and(
-          inArray(skinScans.userId, patientIds),
-          gte(skinScans.createdAt, weekStart)
-        )
-      ),
-    db
-      .select({ userId: wellnessCheckins.userId })
-      .from(wellnessCheckins)
-      .where(
-        and(
-          inArray(wellnessCheckins.userId, patientIds),
-          eq(wellnessCheckins.weekYmd, weekYmd)
-        )
-      ),
-  ]);
-
-  const scanned = new Set<string>();
-  for (const r of scanRows) scanned.add(r.userId);
-  for (const r of skinScanRows) scanned.add(r.userId);
-  const checkedIn = new Set(wellnessRows.map((r) => r.userId));
-
-  const candidates = patients.filter(
-    (p) => !scanned.has(p.id) || !checkedIn.has(p.id)
+  const pendingFor = await pendingThisWeek(
+    patients.map((p) => p.id),
+    now
   );
+  const candidates = patients
+    .map((p) => ({ ...p, pending: pendingFor(p.id) }))
+    .filter((p) => p.pending.scan || p.pending.checkin);
   result.candidates = candidates.length;
 
   for (const patient of candidates) {
-    // Push
+    // Push (phone app users who allowed notifications)
     if (await alreadySent(patient.id, "push", weekYmd)) {
       result.skipped.push += 1;
     } else if (!patient.expoPushToken?.trim()) {
       result.skipped.push += 1;
     } else {
-      const ok = await sendWeeklyCheckinPush(patient.expoPushToken);
+      const ok = await sendWeeklyCheckinPush(patient.expoPushToken, patient.pending);
       if (ok) {
         await logSent(patient.id, "push", weekYmd);
         result.sent.push += 1;
@@ -160,37 +184,16 @@ export async function runWeeklyReminders(
       }
     }
 
-    // WhatsApp
-    if (await alreadySent(patient.id, "whatsapp", weekYmd)) {
-      result.skipped.whatsapp += 1;
-    } else {
-      const wa = await sendWeeklyCheckinWhatsApp({
-        name: patient.name,
-        phoneCountryCode: patient.phoneCountryCode,
-        phone: patient.phone,
-        appLink: dashboardUrl,
-      });
-      if (wa.ok) {
-        await logSent(patient.id, "whatsapp", weekYmd);
-        result.sent.whatsapp += 1;
-      } else if (wa.skipped) {
-        result.skipped.whatsapp += 1;
-      } else {
-        result.failed.whatsapp += 1;
-      }
-    }
-
     // Email
-    if (await alreadySent(patient.id, "email", weekYmd)) {
+    if (isPlaceholderEmail(patient.email) || (await alreadySent(patient.id, "email", weekYmd))) {
       result.skipped.email += 1;
     } else {
-      const em = await sendWeeklyCheckinEmail({
-        to: patient.email,
+      const mail = buildWeeklyReminderEmail({
         name: patient.name,
-        dashboardUrl,
-        scanUrl,
-        schedulesUrl,
+        origin,
+        pending: patient.pending,
       });
+      const em = await sendEmailNotification({ to: patient.email, ...mail });
       if (em.ok) {
         await logSent(patient.id, "email", weekYmd);
         result.sent.email += 1;

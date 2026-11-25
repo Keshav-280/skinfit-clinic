@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { runWeeklyReminders } from "@/src/lib/runWeeklyReminders";
+import { runWeeklyReminders, sendWeeklyReminderTest } from "@/src/lib/runWeeklyReminders";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,11 @@ export async function GET(req: Request) {
   }
 
   try {
+    // ?testEmail=you@example.com sends one sample to that account only.
+    const testEmail = new URL(req.url).searchParams.get("testEmail");
+    if (testEmail !== null) {
+      return NextResponse.json({ ok: true, test: await sendWeeklyReminderTest(testEmail) });
+    }
     const out = await runWeeklyReminders();
     return NextResponse.json({ ok: true, ...out });
   } catch (e) {

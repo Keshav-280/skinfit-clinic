@@ -7,6 +7,7 @@ import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxCon
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
 import { ProfileNavBadge } from "@/components/dashboard/ProfileNavBadge";
 import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
+import { EmailReminderPrompt } from "@/components/dashboard/EmailReminderPrompt";
 import { db } from "@/src/db";
 import { scans } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
@@ -70,6 +71,7 @@ export default async function DashboardLayout({
       </main>
       <ScanJobReadyNotifier />
       {userId ? <WelcomeModal hasScans={hasScans} /> : null}
+      {userId ? <EmailReminderPrompt hasScans={hasScans} /> : null}
     </div>
     </DashboardInboxProvider>
   );

@@ -21,6 +21,7 @@ bash scripts/install-vm-cron.sh
 | Every 2 min | `scripts/cron-http-call.sh appointment-reminders` | `/api/cron/appointment-reminders` |
 | Sun 01:00 | `scripts/cron-http-call.sh kai-weekly` | `/api/cron/kai-weekly` |
 | 1st 02:00 | `scripts/cron-http-call.sh kai-monthly` | `/api/cron/kai-monthly` |
+| Sun 04:30 (10:00 am IST) | `scripts/cron-http-call.sh weekly-reminders` | `/api/cron/weekly-reminders` (opted-in patients only) |
 
 Calls go to `http://127.0.0.1` (nginx → `web`) with `Authorization: Bearer $CRON_SECRET`.
 
