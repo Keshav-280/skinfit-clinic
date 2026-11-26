@@ -1,5 +1,6 @@
 "use client";
 
+import { PatientIntakeFormCard } from "@/components/doctor/PatientIntakeFormCard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -413,6 +414,8 @@ export function DoctorSimplePatientDetail({ patientId }: { patientId: string }) 
                   <Info label="Age" value={patient.age != null ? String(patient.age) : "-"} />
                 </dl>
               </section>
+
+              <PatientIntakeFormCard patientId={patientId} />
 
               <section className={CLINIC.cardPad}>
                 <h2 className={CLINIC.h2}>Questionnaire</h2>

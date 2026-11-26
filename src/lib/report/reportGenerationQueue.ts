@@ -59,8 +59,9 @@ async function setPending(scanId: number, on: boolean): Promise<void> {
 }
 
 /** Fire and forget. Safe to call on every page view: repeated calls for the same scan do nothing. */
-export function scheduleReportGeneration(userId: string, scanId: number): void {
-  if (inFlight.has(scanId)) return;
+export function scheduleReportGeneration(userId: string, scanId: number): Promise<boolean> {
+  const running = inFlight.get(scanId);
+  if (running) return running;
   const work = (async () => {
     await acquire();
     try {
@@ -81,4 +82,5 @@ export function scheduleReportGeneration(userId: string, scanId: number): void {
     })
     .finally(() => inFlight.delete(scanId));
   inFlight.set(scanId, work);
+  return work;
 }

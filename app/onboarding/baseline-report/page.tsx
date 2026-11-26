@@ -42,8 +42,9 @@ export default function OnboardingBaselineReportPage() {
             Baseline captured
           </h1>
           <p className="text-sm leading-relaxed text-[#6B7280]">
-            Your kAI baseline scan is saved. You can open the full report from Treatment
-            History anytime.
+            {scanId
+              ? "Your kAI baseline scan is saved. You can open the full report from Treatment History anytime."
+              : "Our skin team reviews every scan. Your report will be ready within 24 hours, and we will message you in the app."}
             {questionnaireDone === false
               ? " Would you like to answer a few quick questions now? They help kAI tailor your advice."
               : ""}
@@ -52,7 +53,7 @@ export default function OnboardingBaselineReportPage() {
 
         <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-[#6B7280]">
           <Sparkles className="h-3.5 w-3.5 text-[#1E1B31]" aria-hidden />
-          Report builds in the background - no need to wait here.
+          No need to wait here.
         </p>
 
         <div className="flex flex-col gap-3 pt-1">

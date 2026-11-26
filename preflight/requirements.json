@@ -61,6 +61,11 @@
         {
           "type": "present",
           "file": "src/lib/scanPipeline/processScanJob.ts",
+          "pattern": "publishScan\\("
+        },
+        {
+          "type": "present",
+          "file": "src/lib/scanReview/publish.ts",
           "pattern": "stampScanOrdinal\\("
         },
         {
@@ -1229,6 +1234,63 @@
         { "type": "present", "file": "scripts/install-vm-cron.sh", "pattern": "CALL weekly-reminders" },
         { "type": "present", "file": "src/lib/reminders/weeklyReminderContent.ts", "pattern": "reply STOP" },
         { "type": "test", "file": "src/lib/reminders/weeklyReminderContent.test.ts" }
+      ]
+    },
+    {
+      "id": "CLINIC-INTAKE-FORM",
+      "title": "A Fill patient form button leads to the paper consultation form; submitting signs the new patient in, goes straight to the dashboard with no intro, welcome or questionnaire steps, and the clinic portal shows the account and answers. An existing account is never opened by typing its number",
+      "source": "26 Nov: 'create a button of fill form... should be logged in as a user... show up in the operations portals... Don't show anything else'",
+      "checks": [
+        { "type": "present", "file": "app/login/login-form.tsx", "pattern": "href=\"/intake\"" },
+        { "type": "present", "file": "components/intake/ClinicIntakeForm.tsx", "pattern": "window.location.assign" },
+        { "type": "present", "file": "src/lib/intake/store.ts", "pattern": "onboardingComplete: true" },
+        { "type": "present", "file": "src/lib/intake/store.ts", "pattern": "ownForm" },
+        { "type": "present", "file": "app/dashboard/layout.tsx", "pattern": "fromClinicForm" },
+        { "type": "present", "file": "components/doctor/DoctorSimplePatientDetail.tsx", "pattern": "PatientIntakeFormCard" },
+        { "type": "present", "file": "app/api/doctor/patients/[patientId]/intake/route.ts", "pattern": "getDoctorPortalUserId" },
+        { "type": "test", "file": "src/lib/intake/form.test.ts" }
+      ]
+    },
+    {
+      "id": "MEDIXORA-PORTAL",
+      "title": "Staff portal /medixora-reports: all patients searchable, scan the Medixora QR on the same page, SkinFit-headed report with front/left/right white-light photos and scores below, PDF saved to patient history and listed in the portal",
+      "source": "26 Nov: 'new backend portal... Medixora reports... search for a patient name... scan the QR... front, left, right, white light, nothing else... PDF will go to patient scan history'",
+      "checks": [
+        { "type": "present", "file": "middleware.ts", "pattern": "medixora-reports/:path" },
+        { "type": "present", "file": "src/lib/medixora/staffRoute.ts", "pattern": "getDoctorPortalUserId" },
+        { "type": "present", "file": "src/lib/medixora/report.ts", "pattern": "WHITE_LIGHT_TYPE = " },
+        { "type": "present", "file": "src/lib/medixora/pdf.ts", "pattern": "generateKaiReportPdf" },
+        { "type": "present", "file": "src/lib/medixora/content.ts", "pattern": "runVerified" },
+        { "type": "test", "file": "src/lib/medixora/content.test.ts" },
+        { "type": "present", "file": "src/lib/medixora/store.ts", "pattern": "clinicExternalReports" },
+        { "type": "present", "file": "components/medixora/MedixoraPatient.tsx", "pattern": "QrScanner" },
+        { "type": "test", "file": "src/lib/medixora/report.test.ts" }
+      ]
+    },
+    {
+      "id": "SCAN-REVIEW-HOLD",
+      "title": "App scans are not shown to the patient (scores, markings, report) until staff approve them in Ops; staff may hide markings or ask for a retake; the patient is told it takes up to 24 hours",
+      "source": "26 Nov: 'instead of giving direct AI results... give the user report after 24 hours, and it will be reviewed by us in the ops portal'; chose release on approval, approve or retake",
+      "checks": [
+        { "type": "present", "file": "src/lib/scanPipeline/processScanJob.ts", "pattern": "holdScanForReview" },
+        { "type": "present", "file": "app/api/mobile-capture/submit/route.ts", "pattern": "holdScanForReview" },
+        { "type": "present", "file": "app/api/scan/route.ts", "pattern": "holdScanForReview" },
+        { "type": "present", "file": "src/lib/scanReview/review.ts", "pattern": "approveScanReview" },
+        { "type": "present", "file": "app/dashboard/layout.tsx", "pattern": "ScanReviewBanner" },
+        { "type": "present", "file": "app/api/clinic/scan-reviews/[id]/route.ts", "pattern": "getDoctorPortalUserId" },
+        { "type": "manual", "how": "After deploy: take one app scan, confirm nothing appears for the patient, approve it in Ops, confirm the report and the app message appear." }
+      ]
+    },
+    {
+      "id": "STAFF-ROUTES-LOCKED",
+      "title": "Clinic patient list, clinic-dev actions and test analysis addresses require a staff sign-in",
+      "source": "26 Nov: founder chose 'Yes, fix it'",
+      "checks": [
+        { "type": "present", "file": "app/api/clinic/patients/route.ts", "pattern": "requireStaff" },
+        { "type": "present", "file": "app/api/clinic-dev/appointments/route.ts", "pattern": "requireStaff" },
+        { "type": "present", "file": "app/api/clinic-dev/doctor-chat/route.ts", "pattern": "requireStaff" },
+        { "type": "present", "file": "app/api/clinic-dev/parameters/route.ts", "pattern": "requireStaff" },
+        { "type": "present", "file": "app/api/analyze-skin/route.ts", "pattern": "requireStaff" }
       ]
     }
   ]

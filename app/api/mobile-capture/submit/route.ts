@@ -1,3 +1,4 @@
+import { holdScanForReview, scanReviewHoldEnabled } from "@/src/lib/scanReview/hold";
 import { stampScanOrdinal } from "@/src/lib/scanOrdinal";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
@@ -30,7 +31,7 @@ import {
 } from "@/src/lib/insertParameterScores";
 import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
-import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
+import { notifyDoctorsPatientScanCompleted, notifyDoctorsScanAwaitingReview } from "@/src/lib/scanDoctorAlerts";
 import { readWebFormData } from "@/src/lib/webRequestFormData";
 import {
   buildPreviewJpegDataUri,
@@ -781,6 +782,32 @@ export async function POST(request: NextRequest) {
         },
       },
     };
+
+    // Review hold: nothing reaches the patient until the team approves it in the Ops portal.
+    if (scanReviewHoldEnabled()) {
+      await holdScanForReview(
+        db,
+        {
+          scanValues: { ...scanRowBase, faceCaptureImages },
+          paramRows: inferenceParamsToRows(
+            v2params as Parameters<typeof inferenceParamsToRows>[0]
+          ),
+          skinScan: {
+            originalImageUrl: imageDataUri,
+            annotatedImageUrl: overlayDataUri ?? imageDataUri,
+            skinScore: metrics.overall_score,
+            analysisResults,
+          },
+        },
+        { mobileSessionId: sessionId }
+      );
+      await db
+        .update(mobileCaptureSessions)
+        .set({ status: "complete" })
+        .where(eq(mobileCaptureSessions.id, sessionId));
+      await notifyDoctorsScanAwaitingReview(user.name?.trim() || "Patient").catch(() => {});
+      return NextResponse.json({ success: true, data: { underReview: true } });
+    }
 
     const scanInsertReturning = { id: scans.id };
 

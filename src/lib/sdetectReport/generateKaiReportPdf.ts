@@ -321,17 +321,28 @@ async function drawIdentityRow(
 
   ty += ptToMm(20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
   doc.setTextColor(...KAI.navy);
+  const nameRoom = w - pad * 2 - imgBlockW - ptToMm(8);
+  let nameSize = 22;
+  doc.setFontSize(nameSize);
+  while (nameSize > 10 && doc.getTextWidth(data.patient.name || "-") > nameRoom) {
+    doc.setFontSize((nameSize -= 1));
+  }
+  const nameW = doc.getTextWidth(data.patient.name || "-");
   doc.text(data.patient.name || "-", textX, ty);
 
   const gender = data.patient.gender?.trim();
   if (gender && gender !== "-") {
-    const nameW = doc.getTextWidth(data.patient.name || "-");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
     doc.setTextColor(...KAI.muted);
-    doc.text(gender, textX + nameW + ptToMm(10), ty);
+    // Beside the name when it fits, otherwise on its own line.
+    if (nameW + ptToMm(10) + doc.getTextWidth(gender) <= nameRoom) {
+      doc.text(gender, textX + nameW + ptToMm(10), ty);
+    } else {
+      ty += ptToMm(13);
+      doc.text(gender, textX, ty);
+    }
   }
 
   const detailLine = (label: string, value: string) => {
@@ -553,11 +564,7 @@ function drawScoreCard(
 }
 
 function observationCommentary(obs: KaiReportContent["observations"][number]): string {
-  if (obs.commentary.trim()) return obs.commentary.trim();
-  if (obs.score >= 60) {
-    return `Scored ${obs.score}% on your comprehensive analysis - one of your strongest areas and a solid foundation to protect.`;
-  }
-  return `Scored ${obs.score}% on your comprehensive analysis - one of the areas that needs the most attention right now.`;
+  return obs.commentary.trim();
 }
 
 const OBS_HEADER_H = ptToMm(28);
@@ -971,7 +978,7 @@ async function drawContactFooter(
 export async function generateKaiReportPdf(
   data: SdetectReportData,
   content: KaiReportContent,
-  options: { eventLabel?: string } = {}
+  options: { eventLabel?: string; appendix?: (doc: jsPDF) => void } = {}
 ): Promise<Buffer> {
   const doc = new jsPDF(PDF_A4_OPTIONS);
   const pageW = doc.internal.pageSize.getWidth();
@@ -1015,9 +1022,12 @@ export async function generateKaiReportPdf(
   );
   const insightH = measureInsightHeight(doc, fittedInsight, contentW, insightLayout);
 
-  drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH, insightLayout);
+  if (fittedInsight) {
+    drawInsightBox(doc, fittedInsight, MARGIN, y, contentW, insightH, insightLayout);
+  }
 
   await drawContactFooter(doc, MARGIN, footerY, contentW, requiredFooterH);
+  options.appendix?.(doc);
 
   return Buffer.from(doc.output("arraybuffer"));
 }

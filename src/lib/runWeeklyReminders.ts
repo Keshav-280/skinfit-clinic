@@ -13,6 +13,7 @@ import { sendEmailNotification } from "@/src/lib/emailNotification";
 import { sendWeeklyCheckinPush } from "@/src/lib/pushNotification";
 import { listOptedInUserIds } from "@/src/lib/reminders/emailPrefs";
 import { buildWeeklyReminderEmail } from "@/src/lib/reminders/weeklyReminderContent";
+import { usersWithScanInReviewSince } from "@/src/lib/scanReview/review";
 import { publicAppOrigin } from "@/src/lib/trackerResourceLinks";
 
 /** WhatsApp is not sent from here: it needs its own consent before it is added. */
@@ -98,7 +99,12 @@ async function pendingThisWeek(userIds: string[], now: Date) {
       ),
   ]);
 
-  const scanned = new Set<string>([...scanRows, ...skinScanRows].map((r) => r.userId));
+  // A scan waiting for the team's review counts as done: do not ask for another.
+  const inReview = await usersWithScanInReviewSince(weekStart);
+  const scanned = new Set<string>([
+    ...[...scanRows, ...skinScanRows].map((r) => r.userId),
+    ...inReview,
+  ]);
   const checkedIn = new Set(wellnessRows.map((r) => r.userId));
   return (userId: string) => ({
     scan: !scanned.has(userId),

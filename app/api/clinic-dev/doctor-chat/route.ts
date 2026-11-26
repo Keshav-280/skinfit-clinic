@@ -1,3 +1,4 @@
+import { requireStaff } from "@/src/lib/auth/requireStaff";
 import { NextResponse } from "next/server";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/src/db";
@@ -26,6 +27,8 @@ function latestDoctorThreadId(patientId: string) {
  * post replies as `sender: doctor`. Not tied to the patient session.
  */
 export async function POST(req: Request) {
+  const denied = await requireStaff();
+  if (denied) return denied;
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });

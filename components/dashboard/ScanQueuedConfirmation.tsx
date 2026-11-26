@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { removePendingScanJob } from "@/src/lib/scanJobNotifications";
+import { UnderReviewNotice } from "@/components/dashboard/UnderReviewNotice";
 import { ReportPageSkeleton } from "@/components/dashboard/PageSkeletons";
 
 type ScanQueuedConfirmationProps = {
@@ -16,7 +17,7 @@ type ScanQueuedConfirmationProps = {
 
 const POLL_MS = 2000;
 
-type JobPhase = "waiting" | "failed" | "opening";
+type JobPhase = "waiting" | "failed" | "opening" | "review";
 
 export function ScanQueuedConfirmation({
   variant = "dashboard",
@@ -40,6 +41,7 @@ export function ScanQueuedConfirmation({
       const data = (await res.json()) as {
         status?: string;
         scanId?: number | null;
+        underReview?: boolean;
         error?: string;
       };
       const status = String(data.status ?? "");
@@ -51,6 +53,11 @@ export function ScanQueuedConfirmation({
         setPhase("opening");
         router.prefetch(`/dashboard/scans/${scanId}/report`);
         onReady?.(scanId);
+        return;
+      }
+      if (status === "completed" && data.underReview) {
+        removePendingScanJob(jobId);
+        setPhase("review");
         return;
       }
       if (status === "failed") {
@@ -83,19 +90,19 @@ export function ScanQueuedConfirmation({
     waitedMs > 120_000
       ? "Still analysing — this can take a few minutes when the queue is busy."
       : waitedMs > 45_000
-        ? "Writing your personal insights and focus for the week."
+        ? "Preparing your scan for our skin team."
         : "Photos received. kAI is reading markers and scoring parameters.";
 
   const heading =
-    phase === "opening" ? "Report ready" : "Building your Skin DNA";
+    phase === "opening" ? "Report ready" : "Processing your scan";
   const subtitle =
     phase === "opening"
       ? "kAI just finished. Taking you to the report."
       : waitedMs > 120_000
         ? "Still analysing — hang tight"
         : waitedMs > 45_000
-          ? "Drafting insights from your scan"
-          : "Mapping scores, markers, and insights";
+          ? "Preparing it for review"
+          : "Checking your photos";
 
   const steps = [
     { label: "Photos received", done: true },
@@ -108,10 +115,18 @@ export function ScanQueuedConfirmation({
       done: phase === "opening" || waitedMs > 28_000,
     },
     {
-      label: "Writing your report",
+      label: "Sending to our skin team",
       done: phase === "opening" || waitedMs > 50_000,
     },
   ];
+
+  if (phase === "review") {
+    return (
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-md px-1 py-4">
+        <UnderReviewNotice onDone={onDone} />
+      </motion.div>
+    );
+  }
 
   if (phase !== "failed") {
     return (

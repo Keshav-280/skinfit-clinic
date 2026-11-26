@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 import { STORAGE_KEY as INTRO_SEEN_KEY } from "@/components/dashboard/WelcomeModal";
 
 /** Tapping outside closes it for this visit only; it asks again next time until answered. */
-const SNOOZE_KEY = "skinfit_email_reminder_prompt_closed";
+export const SNOOZE_KEY = "skinfit_email_reminder_prompt_closed";
 const SHOW_DELAY_MS = 1500;
 
 export const REMINDER_CHOICE_EVENT = "skinfit:email-reminder-choice";

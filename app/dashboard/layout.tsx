@@ -6,6 +6,7 @@ import { DashboardClinicSupportBell } from "@/components/dashboard/DashboardClin
 import { DashboardInboxProvider } from "@/components/dashboard/DashboardInboxContext";
 import { ScanJobReadyNotifier } from "@/components/dashboard/ScanJobReadyNotifier";
 import { ProfileNavBadge } from "@/components/dashboard/ProfileNavBadge";
+import { ScanReviewBanner } from "@/components/dashboard/ScanReviewBanner";
 import { WelcomeModal } from "@/components/dashboard/WelcomeModal";
 import { EmailReminderPrompt } from "@/components/dashboard/EmailReminderPrompt";
 import { db } from "@/src/db";
@@ -14,6 +15,7 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { SOURCE_COOKIE_NAME, recordSignupSourceIfMissing } from "@/src/lib/attribution/signupSource";
+import { hasIntakeForm } from "@/src/lib/intake/store";
 import { markPastAppointmentsCompleted } from "@/src/lib/markPastAppointmentsCompleted";
 import { runAppointmentReminders } from "@/src/lib/runAppointmentReminders";
 import { runRoutineReminders } from "@/src/lib/runRoutineReminders";
@@ -32,6 +34,14 @@ export default async function DashboardLayout({
       .limit(1);
     hasScans = Boolean(firstScan);
   }
+  // Patients who registered with the clinic form go straight to the dashboard: no welcome popup.
+  const fromClinicForm =
+    userId && !hasScans
+      ? await hasIntakeForm(userId).catch((e) => {
+          console.error("dashboard intake check", e);
+          return false;
+        })
+      : false;
   const sourceCookie = userId ? (await cookies()).get(SOURCE_COOKIE_NAME)?.value : undefined;
   if (userId) {
     // Don’t block HTML: run after response (uses platform waitUntil on Vercel).
@@ -67,11 +77,12 @@ export default async function DashboardLayout({
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 pb-24 md:pb-12 md:px-8">
+        <ScanReviewBanner />
         {children}
       </main>
       <ScanJobReadyNotifier />
-      {userId ? <WelcomeModal hasScans={hasScans} /> : null}
-      {userId ? <EmailReminderPrompt hasScans={hasScans} /> : null}
+      {userId && !fromClinicForm ? <WelcomeModal hasScans={hasScans} /> : null}
+      {userId ? <EmailReminderPrompt hasScans={hasScans || fromClinicForm} /> : null}
     </div>
     </DashboardInboxProvider>
   );

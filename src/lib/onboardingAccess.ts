@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scanJobs, scans, users } from "@/src/db/schema";
+import { hasPendingScanReview } from "@/src/lib/scanReview/review";
 import { BASELINE_ONBOARDING_SCAN_NAME } from "@/src/lib/onboardingConstants";
 
 export type BaselineOnboardingJobStatus =
@@ -125,7 +126,10 @@ export async function getOnboardingAccessForUser(userId: string): Promise<{
       : null;
   const baselineScanId = scanIdFromDb ?? scanIdFromJob;
   const hasBaselineScan = baselineScanId != null;
-  const baselineScanPending = isBaselineScanJobInProgress(baselineJob);
+  // A first scan waiting for review must not lock a new user out of the dashboard.
+  const baselineScanPending =
+    isBaselineScanJobInProgress(baselineJob) ||
+    (!hasBaselineScan && (await hasPendingScanReview(userId)));
   const onboardingComplete = u.onboardingComplete ?? false;
 
   return {

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { OAuthLoginDivider } from "@/components/auth/OAuthLoginDivider";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { LoginIntroSplash } from "@/components/login/LoginIntroSplash";
@@ -618,6 +618,16 @@ export function LoginForm({ phoneLoginEnabled }: { phoneLoginEnabled: boolean })
 
         {isSignIn ? (
           <>
+            <Link
+              href="/intake"
+              className="mb-1 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E1B31] py-3 text-sm font-bold text-white transition hover:bg-[#242A5F]"
+            >
+              <ClipboardList className="h-4 w-4" aria-hidden />
+              Fill patient form
+            </Link>
+            <p className="mb-3 text-center text-xs text-[#5B66A1]">
+              Visiting the clinic for the first time? Start here.
+            </p>
             <SocialLoginButtons disabled={loading} variant="light" compact />
             <OAuthLoginDivider
               variant="light"

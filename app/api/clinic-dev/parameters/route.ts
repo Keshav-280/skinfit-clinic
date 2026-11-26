@@ -1,3 +1,4 @@
+import { requireStaff } from "@/src/lib/auth/requireStaff";
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
@@ -7,6 +8,8 @@ import { KAI_PARAM_KEYS, type KaiParamKey } from "@/src/lib/kaiParameters";
 type Action = "list" | "save";
 
 export async function POST(req: Request) {
+  const denied = await requireStaff();
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as {
     action?: string;
     scanId?: number;

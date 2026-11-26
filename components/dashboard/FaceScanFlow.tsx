@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { UnderReviewNotice } from "@/components/dashboard/UnderReviewNotice";
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -76,6 +77,7 @@ type ScanStep =
   | "naming"
   | "scanning"
   | "queued"
+  | "review"
   | "results"
   | "phone-qr"
   | "handoff-sent";
@@ -999,6 +1001,10 @@ export function FaceScanFlow({
             json.message || json.error || `Submission failed (${res.status})`,
           );
         }
+        if (json?.data?.underReview) {
+          setStep("review");
+          return;
+        }
         const scanId = Number(json?.data?.id);
         setCompletedHandoffScanId(Number.isFinite(scanId) ? scanId : null);
         setStep("results");
@@ -1011,6 +1017,11 @@ export function FaceScanFlow({
         addPendingScanJob(outcome.jobId, finalScanName);
         setQueuedJobId(outcome.jobId);
         setStep("queued");
+        return;
+      }
+
+      if (outcome.mode === "review") {
+        setStep("review");
         return;
       }
 
@@ -1154,6 +1165,14 @@ export function FaceScanFlow({
       ) : null}
     </div>
   );
+
+  if (step === "review") {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-4 py-10">
+        <UnderReviewNotice closeTabOnly={isMobileHandoff} />
+      </div>
+    );
+  }
 
   if (isMobileHandoff && step === "handoff-sent") {
     return (
@@ -1339,6 +1358,7 @@ export function FaceScanFlow({
                   }
                 }}
                 isOnboardingScan={isOnboardingScan}
+                onUnderReview={() => setStep("review")}
               />
 
               <div className="relative flex items-center gap-3 py-1">

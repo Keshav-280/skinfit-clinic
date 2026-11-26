@@ -21,6 +21,7 @@ function isDoctorProtectedPath(pathname: string): boolean {
 }
 
 function isClinicProtectedPath(pathname: string): boolean {
+  if (pathname === "/medixora-reports" || pathname.startsWith("/medixora-reports/")) return true;
   if (!pathname.startsWith("/clinic/")) return false;
   if (pathname === "/clinic/login") return false;
   return true;
@@ -153,6 +154,8 @@ export const config = {
     "/annotator/:path*",
     "/doctor/:path*",
     "/clinic/:path*",
+    "/medixora-reports",
+    "/medixora-reports/:path*",
     "/ops",
     "/ops/:path*",
     "/skinfit-report-generator",

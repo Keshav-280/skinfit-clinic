@@ -9,7 +9,8 @@ export function sanitizeClinicPortalNext(
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
     return CLINIC_PORTAL_DEFAULT;
   }
-  if (!trimmed.startsWith("/clinic/")) return CLINIC_PORTAL_DEFAULT;
+  const medixora = /^\/medixora-reports(\/[A-Za-z0-9-]*)?$/.test(trimmed);
+  if (!medixora && !trimmed.startsWith("/clinic/")) return CLINIC_PORTAL_DEFAULT;
   if (trimmed === "/clinic/login") return CLINIC_PORTAL_DEFAULT;
   return trimmed;
 }

@@ -7,6 +7,7 @@ import type { FaceIdentityImageCheck } from "@/src/lib/scanFaceIdentityGate";
 export type FaceScanSubmitResult =
   | { mode: "queued"; jobId: string }
   | { mode: "completed"; scanId: number }
+  | { mode: "review" }
   | {
       mode: "error";
       message: string;
@@ -58,7 +59,7 @@ export async function submitFaceScan(
   });
   const json = (await res.json()) as ScanErrorJson & {
     success?: boolean;
-    data?: { id?: number };
+    data?: { id?: number; underReview?: boolean };
   };
 
   if (!res.ok || !json.success) {
@@ -76,6 +77,8 @@ export async function submitFaceScan(
       identityChecks: json.identityChecks,
     };
   }
+
+  if (json.data?.underReview) return { mode: "review" };
 
   const scanId = json.data?.id;
   if (typeof scanId === "number" && scanId >= 1) {

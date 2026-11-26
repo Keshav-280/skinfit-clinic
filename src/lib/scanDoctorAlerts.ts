@@ -23,3 +23,12 @@ export async function notifyDoctorsPatientScanCompleted(opts: {
     },
   });
 }
+
+/** Push all doctors when a scan is waiting in the review queue. */
+export async function notifyDoctorsScanAwaitingReview(patientName: string): Promise<void> {
+  await notifyDoctorUsers({
+    title: "Scan waiting for review",
+    body: `${patientName.trim() || "Patient"} - open Ops, Scan reviews`.slice(0, 180),
+    data: { type: "scan_review_pending" },
+  });
+}

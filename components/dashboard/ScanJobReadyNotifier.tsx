@@ -44,6 +44,7 @@ export function ScanJobReadyNotifier() {
         const data = (await res.json()) as {
           status?: string;
           scanId?: number | null;
+          underReview?: boolean;
           error?: string;
         };
         const status = String(data.status ?? "");
@@ -64,6 +65,11 @@ export function ScanJobReadyNotifier() {
               return [...prev, { scanId, title }];
             });
           }
+          continue;
+        }
+        // Under review: the app message and the banner tell the patient when it is ready.
+        if (status === "completed" && data.underReview) {
+          removePendingScanJob(job.jobId);
           continue;
         }
         if (status === "failed") {

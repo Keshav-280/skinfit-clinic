@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { mobileCaptureSessions } from "@/src/db/schema";
+import { isMobileSessionUnderReview } from "@/src/lib/scanReview/review";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 
 export async function GET(request: NextRequest) {
@@ -57,6 +58,10 @@ export async function GET(request: NextRequest) {
       success: true,
       status: currentStatus,
       scanId: session.scanId,
+      underReview:
+        currentStatus === "complete" && !session.scanId
+          ? await isMobileSessionUnderReview(sessionId)
+          : false,
       captureImages:
         currentStatus === "photos_ready" ? session.captureImages ?? null : null,
       captureCropContext:

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { CalendarClock, Gift, Users, BarChart3 } from "lucide-react";
+import { CalendarClock, Gift, Users, BarChart3, ScanLine } from "lucide-react";
 import {
   CLINIC_REQUEST_INBOX_EVENT,
   type ClinicRequestInboxDetail,
@@ -29,6 +29,24 @@ function subNavClass(active: boolean) {
 export function DoctorSimpleNav() {
   const pathname = usePathname();
   const [pending, setPending] = useState(0);
+  const [reviews, setReviews] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    const loadReviews = () =>
+      fetch("/api/clinic/scan-reviews/count", { credentials: "include", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { waiting?: number } | null) => {
+          if (alive && d) setReviews(d.waiting ?? 0);
+        })
+        .catch(() => {});
+    void loadReviews();
+    const timer = window.setInterval(loadReviews, 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [pathname]);
 
   const load = useCallback(async () => {
     try {
@@ -93,6 +111,14 @@ export function DoctorSimpleNav() {
           aria-current={opsActive ? "page" : undefined}
         >
           Ops
+          {reviews > 0 ? (
+            <span
+              className="ml-1.5 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#DF9DA4] px-1 text-[10px] font-bold leading-none text-[#1E1B31]"
+              aria-label={`${reviews} scans waiting for review`}
+            >
+              {reviews > 99 ? "99+" : reviews}
+            </span>
+          ) : null}
         </Link>
       </nav>
       {clinicActive ? (
@@ -117,6 +143,10 @@ export function DoctorSimpleNav() {
           <Link href="/clinic/scoreboard" className={subNavClass(scoreboardActive)}>
             <BarChart3 className="h-4 w-4" aria-hidden />
             Scoreboard
+          </Link>
+          <Link href="/medixora-reports" className={subNavClass(false)}>
+            <ScanLine className="h-4 w-4" aria-hidden />
+            Medixora
           </Link>
         </nav>
       ) : null}

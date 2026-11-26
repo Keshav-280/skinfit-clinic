@@ -1,7 +1,10 @@
+import { requireStaff } from "@/src/lib/auth/requireStaff";
 import { NextResponse } from "next/server";
 import { runRoboflowSkinAnalysis } from "../../../../src/lib/roboflowSkinAnalysis";
 
 export async function POST(req: Request) {
+  const denied = await requireStaff();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const base64Image = body.base64Image as string | undefined;

@@ -33,7 +33,8 @@ const worker = new Worker(
     await setJobStatus(jobId, "processing");
     try {
       const { scanId } = await processScanJob(jobId, payload, db);
-      await setJobStatus(jobId, "completed", { scanId });
+      // No scan id yet when the scan is waiting for the team's review.
+      await setJobStatus(jobId, "completed", { scanId: scanId ?? undefined });
       logger.queue(QUEUE_NAMES.scanAnalysis, "completed", { jobId, scanId });
       return { scanId };
     } catch (err) {

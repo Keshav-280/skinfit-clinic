@@ -32,6 +32,7 @@ interface MobileCaptureQRPanelProps {
   ) => void;
   /** Phone finished a full scan on-device (continue-on-phone path). */
   onScanComplete?: (scanId: number) => void;
+  onUnderReview?: () => void;
   onSessionReady?: (sessionId: string) => void;
   isOnboardingScan?: boolean;
 }
@@ -40,6 +41,7 @@ export function MobileCaptureQRPanel({
   onBack,
   onPhotosReady,
   onScanComplete,
+  onUnderReview,
   onSessionReady,
   isOnboardingScan = false,
 }: MobileCaptureQRPanelProps) {
@@ -63,6 +65,11 @@ export function MobileCaptureQRPanel({
   useEffect(() => {
     onScanCompleteRef.current = onScanComplete;
   }, [onScanComplete]);
+
+  const onUnderReviewRef = useRef(onUnderReview);
+  useEffect(() => {
+    onUnderReviewRef.current = onUnderReview;
+  }, [onUnderReview]);
 
   useEffect(() => {
     onSessionReadyRef.current = onSessionReady;
@@ -168,7 +175,9 @@ export function MobileCaptureQRPanel({
             setStatus("complete");
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
             const scanId = Number(data.scanId);
-            if (Number.isFinite(scanId) && scanId >= 1) {
+            if (data.underReview) {
+              onUnderReviewRef.current?.();
+            } else if (Number.isFinite(scanId) && scanId >= 1) {
               setTimeout(() => {
                 onScanCompleteRef.current?.(scanId);
               }, 900);

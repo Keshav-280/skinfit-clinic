@@ -1,3 +1,4 @@
+import { requireStaff } from "@/src/lib/auth/requireStaff";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "../../../src/db";
@@ -14,6 +15,8 @@ import { runRoboflowSkinAnalysis } from "../../../src/lib/roboflowSkinAnalysis";
  * Runs Roboflow analysis, persists results to Neon, and returns scanId for the dashboard.
  */
 export async function POST(req: Request) {
+  const denied = await requireStaff();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const base64Image = body.base64Image as string | undefined;

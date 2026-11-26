@@ -1,9 +1,12 @@
+import { requireStaff } from "@/src/lib/auth/requireStaff";
 import { NextResponse } from "next/server";
 import { db } from "../../../../src/db";
 import { users, scans } from "../../../../src/db/schema";
 import { desc, eq } from "drizzle-orm";
 
 export async function GET() {
+  const denied = await requireStaff();
+  if (denied) return denied;
   try {
     const patients = await db.query.users.findMany({
       where: eq(users.role, "patient"),

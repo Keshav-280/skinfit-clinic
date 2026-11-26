@@ -1,7 +1,6 @@
 import OpenAI from "openai";
-import { stampScanOrdinal } from "@/src/lib/scanOrdinal";
 import { desc, eq } from "drizzle-orm";
-import { scanJobs, scans, skinScans, users, mobileCaptureSessions } from "@/src/db/schema";
+import { scanJobs, scans, users, mobileCaptureSessions } from "@/src/db/schema";
 import type { NodePgAppDatabase } from "@/src/db/database-types";
 
 export type ScanJobDatabase = NodePgAppDatabase;
@@ -18,10 +17,9 @@ import {
   runAcneDetector,
   applyAcneDetectorToScanPayload,
 } from "@/src/lib/acneDetectorInference";
-import {
-  inferenceParamsToRows,
-  insertParameterScoresForScan,
-} from "@/src/lib/insertParameterScores";
+import { inferenceParamsToRows } from "@/src/lib/insertParameterScores";
+import { publishScan, type PendingScan } from "@/src/lib/scanReview/publish";
+import { holdScanForReview, scanReviewHoldEnabled } from "@/src/lib/scanReview/hold";
 import {
   buildScanPayloadFromAnalyzeV1,
   buildScanPayloadFromAnalyzeV2,
@@ -42,7 +40,6 @@ import {
   MASK_EXPORT_VERSION_TITLE_FREE,
 } from "@/src/lib/maskImageCrop";
 import { persistDataUriToStorage } from "@/src/lib/resolveScanImageUrl";
-import { persistScanTrackerSnapshot } from "@/src/lib/scanTrackerSnapshot";
 import { ragParamValuesWithReview } from "@/src/lib/resolveScanDisplayScores";
 import {
   buildScoreReview,
@@ -51,7 +48,7 @@ import {
 } from "@/src/lib/scoreOutliers";
 import { scheduleReportGeneration } from "@/src/lib/report/reportGenerationQueue";
 import { getAssignedDoctorIdForPatient } from "@/src/lib/doctorPatientCare";
-import { notifyDoctorsPatientScanCompleted } from "@/src/lib/scanDoctorAlerts";
+import { notifyDoctorsPatientScanCompleted, notifyDoctorsScanAwaitingReview } from "@/src/lib/scanDoctorAlerts";
 import type { ScanJobPayload } from "@/src/lib/infra";
 import { cropJpegBufferForMlStep } from "@/src/lib/cropScanImageForMl";
 import type { FaceScanCaptureId } from "@/src/lib/faceScanCaptures";
@@ -78,7 +75,7 @@ export async function processScanJob(
   jobId: string,
   payload: ScanJobPayload,
   database: ScanJobDatabase
-): Promise<{ scanId: number }> {
+): Promise<{ scanId: number | null }> {
   const started = Date.now();
   await database
     .update(scanJobs)
@@ -500,9 +497,8 @@ export async function processScanJob(
     });
   }
 
-  const [inserted] = await database
-    .insert(scans)
-    .values({
+  const pending: PendingScan = {
+    scanValues: {
       userId: user.id,
       doctorId: scanDoctorId,
       scanName: payload.scanName.trim() || null,
@@ -546,86 +542,75 @@ export async function processScanJob(
           proxy_regions: "centre",
         },
       },
-    })
-    .returning({ id: scans.id });
+    },
+    paramRows: inferenceParamsToRows(
+      merged.params as Record<
+        string,
+        {
+          value: number | null;
+          source: string;
+          severity_flag?: boolean;
+        }
+      >
+    ),
+    skinScan: {
+      originalImageUrl: payload.primaryImageUrl,
+      annotatedImageUrl: overlayUrl ?? payload.primaryImageUrl,
+      skinScore: metrics.overall_score,
+      analysisResults: scoreReview ? { ...analysisResults, scoreReview } : analysisResults,
+    },
+  };
 
-  if (inserted?.id != null) {
-    await insertParameterScoresForScan(
-      database,
-      inserted.id,
-      inferenceParamsToRows(
-        merged.params as Record<
-          string,
-          {
-            value: number | null;
-            source: string;
-            severity_flag?: boolean;
-          }
-        >
-      )
-    );
-    await stampScanOrdinal(database, inserted.id);
-    const snapshotOk = await persistScanTrackerSnapshot(user.id, inserted.id, database).catch((err) => {
-      logger.warn("tracker_snapshot_skipped", {
-        jobId,
-        scanId: inserted.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return false;
+  // Review hold: nothing reaches the patient until the team approves it in the Ops portal.
+  if (scanReviewHoldEnabled()) {
+    await holdScanForReview(database, pending, {
+      jobId,
+      mobileSessionId: payload.mobileSessionId ?? null,
     });
-    if (!snapshotOk) {
-      logger.warn("tracker_snapshot_missing", {
-        jobId,
-        scanId: inserted.id,
-        hint: "scan marked ready; tracker can rebuild on view",
-      });
+    if (payload.mobileSessionId) {
+      await database
+        .update(mobileCaptureSessions)
+        .set({ status: "complete" })
+        .where(eq(mobileCaptureSessions.id, payload.mobileSessionId));
     }
-    // The AI report (written, checked, rewritten if needed) can take minutes. Do NOT hold the scan
-    // for it: the scan is marked ready now and the report appears when it is built.
-    scheduleReportGeneration(user.id, inserted.id);
+    await database
+      .update(scanJobs)
+      .set({ status: "completed", resultScanId: null, updatedAt: new Date() })
+      .where(eq(scanJobs.id, jobId));
+    await notifyDoctorsScanAwaitingReview(user.name?.trim() || "Patient").catch((err) => {
+      logger.warn("review_alert_skipped", { jobId, error: String(err) });
+    });
+    return { scanId: null };
   }
 
-  await database.insert(skinScans).values({
-    userId: user.id,
-    originalImageUrl: payload.primaryImageUrl,
-    annotatedImageUrl: overlayUrl ?? payload.primaryImageUrl,
-    skinScore: metrics.overall_score,
-    analysisResults: scoreReview ? { ...analysisResults, scoreReview } : analysisResults,
+  const scanId = await publishScan(database, pending, {
+    mobileSessionId: payload.mobileSessionId ?? null,
   });
+  // The AI report (written, checked, rewritten if needed) can take minutes. Do NOT hold the scan
+  // for it: the scan is marked ready now and the report appears when it is built.
+  scheduleReportGeneration(user.id, scanId);
 
   await database
     .update(scanJobs)
     .set({
       status: "completed",
-      resultScanId: inserted?.id ?? null,
+      resultScanId: scanId,
       updatedAt: new Date(),
     })
     .where(eq(scanJobs.id, jobId));
 
   await publishNotification("scan.completed", payload.userId, {
-    scanId: inserted?.id,
+    scanId,
     jobId,
     scanName: payload.scanName ?? null,
   });
 
-  if (inserted?.id != null) {
-    await notifyDoctorsPatientScanCompleted({
-      patientId: user.id,
-      patientName: user.name?.trim() || "Patient",
-      scanId: inserted.id,
-      scanName: payload.scanName ?? null,
-    });
-
-    if (payload.mobileSessionId) {
-      await database
-        .update(mobileCaptureSessions)
-        .set({
-          status: "complete",
-          scanId: inserted.id,
-        })
-        .where(eq(mobileCaptureSessions.id, payload.mobileSessionId));
-    }
-  }
+  await notifyDoctorsPatientScanCompleted({
+    patientId: user.id,
+    patientName: user.name?.trim() || "Patient",
+    scanId,
+    scanName: payload.scanName ?? null,
+  });
 
   await Promise.all([
     invalidateUserHomeCache(payload.userId),
@@ -633,5 +618,5 @@ export async function processScanJob(
     invalidateUserInsightsCache(payload.userId),
   ]);
 
-  return { scanId: inserted!.id };
+  return { scanId };
 }
