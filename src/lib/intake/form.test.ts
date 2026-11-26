@@ -77,4 +77,12 @@ describe("clinic intake form", () => {
     expect(profileFromIntake(filled(), now).primaryConcern).toBe("general");
     expect(profileFromIntake(filled({ concerns: ["Melasma", "Acne"] }), now).concerns).toEqual(["acne", "pigmentation"]);
   });
+
+  it("keeps past treatment details unless the patient answered No", () => {
+    const details = { procedureClinic: "Other Clinic", procedureDate: "March 2026", procedureComplications: "Redness" };
+    const kept = filled(details);
+    expect(kept.hadProcedures).toBe("Yes");
+    expect(kept.procedureClinic).toBe("Other Clinic");
+    expect(filled({ ...details, hadProcedures: "No" }).procedureClinic).toBe("");
+  });
 });

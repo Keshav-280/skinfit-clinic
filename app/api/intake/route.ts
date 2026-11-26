@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/src/db";
+import { SESSION_COOKIE_NAME } from "@/src/lib/auth/constants";
 import { getDoctorPortalUserId } from "@/src/lib/auth/doctor-access";
 import { getSessionUserId } from "@/src/lib/auth/get-session";
 import { establishPatientSessionCookie } from "@/src/lib/auth/oauth/establish-session";
@@ -48,21 +50,23 @@ export async function POST(req: Request) {
       );
     }
 
-    const staffUserId = await getDoctorPortalUserId();
-    if (!staffUserId) {
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-      if (ip && (await overLimit(ip))) {
-        return NextResponse.json(
-          { error: "RATE_LIMITED", message: "Too many forms from this network. Please ask the front desk." },
-          { status: 429 }
-        );
-      }
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (ip && (await overLimit(ip))) {
+      return NextResponse.json(
+        { error: "RATE_LIMITED", message: "Too many forms from this network. Please ask the front desk." },
+        { status: 429 }
+      );
     }
+
+    // This form belongs to the patient. If staff were signed in on this device, sign them out
+    // so the person holding it cannot open the clinic or operations portals.
+    const staffSignedIn = Boolean(await getDoctorPortalUserId());
+    if (staffSignedIn) (await cookies()).delete(SESSION_COOKIE_NAME);
 
     const result = await saveIntake({
       answers,
-      sessionUserId: staffUserId ? null : await getSessionUserId(),
-      staffUserId,
+      sessionUserId: staffSignedIn ? null : await getSessionUserId(),
+      staffUserId: null,
     });
 
     if (result.kind === "created") {
@@ -77,10 +81,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Staff typing a form on their own device stay signed in as staff.
-    if (staffUserId) {
-      return NextResponse.json({ ok: true, outcome: "staff", patientId: result.user.id, existed: result.kind === "existing" });
-    }
     if (result.kind === "existing") {
       return NextResponse.json({ ok: true, outcome: "existing" });
     }

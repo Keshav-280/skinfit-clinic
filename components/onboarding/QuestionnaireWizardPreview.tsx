@@ -135,14 +135,20 @@ function Pill({
   );
 }
 
-function CompletionScreen({
+export function CompletionScreen({
   hasScan,
   onTakeScan,
   onGoDashboard,
+  doneLabel = "Questionnaire complete",
+  message = "Thanks for sharing - kAI now has what it needs to personalise your care.",
+  dashboardLabel = "Go to dashboard",
 }: {
   hasScan: boolean;
-  onTakeScan: () => void;
+  onTakeScan?: () => void;
   onGoDashboard: () => void;
+  doneLabel?: string;
+  message?: string;
+  dashboardLabel?: string;
 }) {
   const [settled, setSettled] = useState(false);
 
@@ -202,7 +208,7 @@ function CompletionScreen({
             transition={{ duration: 0.4, delay: 0.55, ease: easeOut }}
             className="mt-6 text-lg font-bold text-white"
           >
-            Questionnaire complete
+            {doneLabel}
           </motion.p>
         ) : (
           <motion.div
@@ -215,8 +221,7 @@ function CompletionScreen({
               You&apos;re all set!
             </h1>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#6B7280]">
-              Thanks for sharing - kAI now has what it needs to personalise
-              your care.
+              {message}
             </p>
           </motion.div>
         )}
@@ -247,7 +252,7 @@ function CompletionScreen({
                 : "w-full rounded-2xl border border-[#1E1B31]/25 bg-white py-4 text-[15px] font-bold text-[#1E1B31] transition hover:bg-[#1E1B31]/5"
             }
           >
-            Go to dashboard
+            {dashboardLabel}
           </button>
         </motion.div>
       ) : null}

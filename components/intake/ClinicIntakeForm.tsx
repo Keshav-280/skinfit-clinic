@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { CompletionScreen } from "@/components/onboarding/QuestionnaireWizardPreview";
 import { STORAGE_KEY as INTRO_SEEN_KEY } from "@/components/dashboard/WelcomeModal";
 import { SNOOZE_KEY as EMAIL_PROMPT_SNOOZE_KEY } from "@/components/dashboard/EmailReminderPrompt";
 import {
@@ -43,7 +44,7 @@ type ListKey = {
   [K in keyof IntakeAnswers]: IntakeAnswers[K] extends string[] ? K : never;
 }[keyof IntakeAnswers];
 
-type Done = { outcome: "existing" } | { outcome: "staff"; patientId: string; existed: boolean };
+type Done = "signed-in" | "existing";
 
 export function ClinicIntakeForm() {
   const [a, setA] = useState<IntakeAnswers>(emptyIntake);
@@ -108,9 +109,7 @@ export function ClinicIntakeForm() {
       });
       const data = (await res.json().catch(() => ({}))) as {
         message?: string;
-        outcome?: "signed-in" | "existing" | "staff";
-        patientId?: string;
-        existed?: boolean;
+        outcome?: Done;
       };
       if (!res.ok || !data.outcome) {
         setMessage(data.message || "Could not save the form. Please try again.");
@@ -122,21 +121,15 @@ export function ClinicIntakeForm() {
         /* ignore */
       }
       if (data.outcome === "signed-in") {
-        // Straight to the dashboard: no welcome or reminder popup on this first visit.
+        // No welcome or reminder popup when they open the dashboard from here.
         try {
           localStorage.setItem(INTRO_SEEN_KEY, "true");
           sessionStorage.setItem(EMAIL_PROMPT_SNOOZE_KEY, "true");
         } catch {
           /* private mode */
         }
-        window.location.assign("/dashboard");
-        return;
       }
-      setDone(
-        data.outcome === "staff"
-          ? { outcome: "staff", patientId: data.patientId ?? "", existed: Boolean(data.existed) }
-          : { outcome: "existing" }
-      );
+      setDone(data.outcome);
     } catch {
       setMessage("No connection. Check the internet and press Submit again.");
     } finally {
@@ -179,27 +172,31 @@ export function ClinicIntakeForm() {
     </div>
   );
 
+  /** An option tile. Choosing it changes only its colour, so nothing on the page moves. */
   const chip = (selected: boolean, label: string, onClick: () => void) => (
     <button
       key={label}
       type="button"
       aria-pressed={selected}
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+      className={`flex min-h-[48px] w-full items-center justify-center rounded-xl border px-2 py-2 text-center text-sm font-semibold leading-tight transition-colors ${
         selected
           ? "border-[#1E1B31] bg-[#1E1B31] text-white"
-          : "border-[#1E1B31]/20 bg-white text-[#1E1B31]"
+          : "border-[#1E1B31]/15 bg-white text-[#1E1B31]"
       }`}
     >
-      {selected ? <Check className="h-4 w-4" aria-hidden /> : null}
       {label}
     </button>
   );
 
+  /** Equal columns: three for the three-way questions, otherwise two. */
+  const grid = (options: readonly string[]) =>
+    `grid auto-rows-fr gap-2 ${options.length === 3 ? "grid-cols-3" : "grid-cols-2"}`;
+
   const single = (field: TextKey, label: string, options: readonly string[]) => (
     <fieldset>
       <legend className={LABEL}>{label}</legend>
-      <div className="flex flex-wrap gap-2">
+      <div className={grid(options)}>
         {options.map((o) =>
           chip(a[field] === o, o, () => set({ [field]: a[field] === o ? "" : o } as Partial<IntakeAnswers>))
         )}
@@ -212,7 +209,7 @@ export function ClinicIntakeForm() {
   const multi = (field: ListKey, label: string, options: readonly string[], exclusive?: string) => (
     <fieldset>
       <legend className={LABEL}>{label}</legend>
-      <div className="flex flex-wrap gap-2">
+      <div className={grid(options)}>
         {options.map((o) =>
           chip(a[field].includes(o), o, () => {
             const has = a[field].includes(o);
@@ -232,49 +229,19 @@ export function ClinicIntakeForm() {
   const age = ageFromDob(a.dateOfBirth);
 
   if (done) {
+    const signedIn = done === "signed-in";
     return (
-      <Shell>
-        <div className="rounded-3xl bg-white p-6 text-center shadow-[0_8px_24px_rgba(30,27,49,0.08)]">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F0EAE2] text-[#1E1B31]" aria-hidden>
-            <Check className="h-6 w-6" />
-          </span>
-          <h1 className="mt-4 font-serif text-xl font-semibold text-[#1E1B31]">Form received</h1>
-          {done.outcome === "existing" ? (
-            <>
-              <p className="mt-2 text-sm text-[#5B66A1]">
-                You already have a SkinFit account with these details. Sign in to see your dashboard.
-              </p>
-              <Link href="/login" className={`mt-5 block ${PRIMARY}`}>
-                Sign in
-              </Link>
-            </>
-          ) : (
-            <>
-              <p className="mt-2 text-sm text-[#5B66A1]">
-                {done.existed
-                  ? "Added to the existing account for this patient."
-                  : "The patient account has been created."}{" "}
-                You are still signed in as staff.
-              </p>
-              <Link href={`/clinic/patients/${done.patientId}`} className={`mt-5 block ${PRIMARY}`}>
-                Open patient
-              </Link>
-              <button
-                type="button"
-                className="mt-2 w-full py-3 text-sm font-semibold text-[#1E1B31]"
-                onClick={() => {
-                  setA(emptyIntake());
-                  setErrors([]);
-                  setDone(null);
-                  setStep(0);
-                }}
-              >
-                Fill another form
-              </button>
-            </>
-          )}
-        </div>
-      </Shell>
+      <CompletionScreen
+        hasScan
+        doneLabel="Form completed"
+        message={
+          signedIn
+            ? "Thanks for sharing. Your details are saved and your dashboard is ready."
+            : "Thanks for sharing. Your form is saved. You already have a SkinFit account, so sign in to open your dashboard."
+        }
+        dashboardLabel={signedIn ? "Go to dashboard" : "Sign in"}
+        onGoDashboard={() => window.location.assign(signedIn ? "/dashboard" : "/login")}
+      />
     );
   }
 
@@ -345,13 +312,13 @@ export function ClinicIntakeForm() {
             {multi("concerns", "What brings you to SkinFit today? Tick all that apply", CONCERNS)}
             {a.concerns.includes("Other") ? input("concernOther", "Other concern") : null}
             {single("hadProcedures", "Have you had any aesthetic procedures before?", YES_NO)}
-            {a.hadProcedures === "Yes" ? (
+            {a.hadProcedures !== "No" ? (
               <>
-                {multi("procedures", "Which ones?", PROCEDURES)}
+                {multi("procedures", "Which procedures?", PROCEDURES)}
                 {a.procedures.includes("Other") ? input("procedureOther", "Other procedure") : null}
-                {input("procedureClinic", "Clinic name")}
-                {input("procedureDate", "Approximate date")}
-                {input("procedureComplications", "Any complications?")}
+                {input("procedureClinic", "Which clinic did you have it at?")}
+                {input("procedureDate", "Approximate date", { placeholder: "For example, March 2026" })}
+                {input("procedureComplications", "Did you have any complications?")}
               </>
             ) : null}
           </>

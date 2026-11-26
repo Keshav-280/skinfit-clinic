@@ -138,12 +138,12 @@ export function sanitizeIntake(raw: unknown): IntakeAnswers {
   const gender = oneOf(r.gender, GENDERS);
   const concerns = manyOf(r.concerns, CONCERNS);
   const hadProcedures = oneOf(r.hadProcedures, YES_NO);
-  const procedures = hadProcedures === "Yes" ? manyOf(r.procedures, PROCEDURES) : [];
+  const procedures = hadProcedures === "No" ? [] : manyOf(r.procedures, PROCEDURES);
   const hairConcerns = manyOf(r.hairConcerns, HAIR_CONCERNS);
   const conditions = manyOf(r.medicalConditions, MEDICAL_CONDITIONS);
   const pregnancy = gender === "Female" ? manyOf(r.pregnancy, PREGNANCY) : [];
   const after = (cond: boolean, v: unknown, max = 200) => (cond ? text(v, max) : "");
-  return {
+  const answers: IntakeAnswers = {
     name: text(r.name, 120),
     dateOfBirth: text(r.dateOfBirth, 10),
     gender,
@@ -159,9 +159,9 @@ export function sanitizeIntake(raw: unknown): IntakeAnswers {
     hadProcedures,
     procedures,
     procedureOther: after(procedures.includes("Other"), r.procedureOther),
-    procedureClinic: after(hadProcedures === "Yes", r.procedureClinic, 120),
-    procedureDate: after(hadProcedures === "Yes", r.procedureDate, 60),
-    procedureComplications: after(hadProcedures === "Yes", r.procedureComplications, 400),
+    procedureClinic: after(hadProcedures !== "No", r.procedureClinic, 120),
+    procedureDate: after(hadProcedures !== "No", r.procedureDate, 60),
+    procedureComplications: after(hadProcedures !== "No", r.procedureComplications, 400),
     skinType: oneOf(r.skinType, SKIN_TYPES),
     skinExperiences: manyOf(r.skinExperiences, SKIN_EXPERIENCES),
     hairConcerns,
@@ -186,6 +186,13 @@ export function sanitizeIntake(raw: unknown): IntakeAnswers {
     declarationAccepted: r.declarationAccepted === true,
     signatureName: text(r.signatureName, 120),
   };
+  if (
+    answers.hadProcedures === "" &&
+    (answers.procedures.length || answers.procedureClinic || answers.procedureDate || answers.procedureComplications)
+  ) {
+    answers.hadProcedures = "Yes";
+  }
+  return answers;
 }
 
 /** Everything wrong with already-sanitised answers, in form order. Empty means it can be saved. */

@@ -1238,11 +1238,12 @@
     },
     {
       "id": "CLINIC-INTAKE-FORM",
-      "title": "A Fill patient form button leads to the paper consultation form; submitting signs the new patient in, goes straight to the dashboard with no intro, welcome or questionnaire steps, and the clinic portal shows the account and answers. An existing account is never opened by typing its number",
+      "title": "A Fill patient form button leads to the paper consultation form; submitting signs the new patient in and shows a Form completed screen with Go to dashboard (no intro, welcome or questionnaire steps); the form is patient-only with no clinic or ops links; and the clinic portal shows the account and answers. An existing account is never opened by typing its number",
       "source": "26 Nov: 'create a button of fill form... should be logged in as a user... show up in the operations portals... Don't show anything else'",
       "checks": [
         { "type": "present", "file": "app/login/login-form.tsx", "pattern": "href=\"/intake\"" },
-        { "type": "present", "file": "components/intake/ClinicIntakeForm.tsx", "pattern": "window.location.assign" },
+        { "type": "present", "file": "components/intake/ClinicIntakeForm.tsx", "pattern": "Form completed" },
+        { "type": "absent", "paths": ["components/intake"], "pattern": "/clinic/" },
         { "type": "present", "file": "src/lib/intake/store.ts", "pattern": "onboardingComplete: true" },
         { "type": "present", "file": "src/lib/intake/store.ts", "pattern": "ownForm" },
         { "type": "present", "file": "app/dashboard/layout.tsx", "pattern": "fromClinicForm" },
