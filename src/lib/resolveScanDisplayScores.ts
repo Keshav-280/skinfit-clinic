@@ -1,3 +1,4 @@
+import { readStaffReview } from "@/src/lib/staffReview/model";
 import type { ClinicalScores } from "@/components/dashboard/scanReportTypes";
 import { parseClinicalScores } from "@/src/lib/parseClinicalScores";
 import type { RagKaiParamKey } from "@/src/lib/ragEightParams";
@@ -182,10 +183,13 @@ export function resolveScanDisplayScores(input: {
     Number.isFinite(doctorOverrides.kaiScore) &&
     !hasDoctorParamOverrides;
 
+  const staff = readStaffReview(input.scoresJson);
+
   // Overall kAI always follows the six displayed category scores (weighted sum).
   // Legacy doctor kaiScore-only override is preserved when no param edits exist.
-  const resolvedKaiScore =
-    hasDoctorParamOverrides && computedKai != null
+  const resolvedKaiScore = staff
+    ? staff.overall // the plain average of the six staff scores
+    : hasDoctorParamOverrides && computedKai != null
       ? computedKai
       : hasKaiScoreOnlyOverride
         ? clampInt(doctorOverrides!.kaiScore!, 0, 100)

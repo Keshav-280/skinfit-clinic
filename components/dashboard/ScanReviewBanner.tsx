@@ -38,7 +38,7 @@ export function ScanReviewBanner() {
         <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[#1E1B31]" aria-hidden />
         <p className="text-sm text-[#1E1B31]">
           <span className="font-semibold">Your scan is being reviewed.</span> Your report will be
-          ready within 24 hours.
+          ready within 48 hours.
         </p>
       </div>
     );

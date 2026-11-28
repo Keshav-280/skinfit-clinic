@@ -22,7 +22,7 @@ export function UnderReviewNotice({
         Your scan is with our skin team
       </h2>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#6B7280]">
-        We review every scan before sharing results. Your report will be ready within 24 hours, and
+        We review every scan before sharing results. Your report will be ready within 48 hours, and
         we will message you in the app when it is.
       </p>
       {closeTabOnly ? (

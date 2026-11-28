@@ -3,6 +3,7 @@
  * Replaces template hook / insight / resources / causes / focus copy in patientTrackerReport.
  */
 
+import { comparableScans } from "@/src/lib/staffReview/model";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import {
@@ -219,7 +220,7 @@ export async function buildRagPatientTrackerNarrative(input: {
     .where(eq(scans.userId, userId))
     .orderBy(asc(scans.createdAt));
 
-  const scansWithParams = scanHistory.map((s) => ({
+  const scansWithParams = comparableScans(scanRow.scores, scanHistory).map((s) => ({
     id: s.id,
     createdAt: s.createdAt,
     overallScore: s.overallScore,

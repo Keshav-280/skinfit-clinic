@@ -1,3 +1,4 @@
+import { isStaffScored } from "@/src/lib/staffReview/model";
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../../../../src/db";
@@ -146,7 +147,7 @@ export default async function ScanReportPage({
     texture: row.texture,
     scores,
   });
-  const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
+  const proxyRegions = isStaffScored(scores) ? [] : ensureScarsAndUnderEyeProxyRegions(
     parseScanProxyRegions(scores),
     {
       acne_scars:

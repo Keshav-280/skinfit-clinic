@@ -1,3 +1,4 @@
+import { isStaffScored } from "@/src/lib/staffReview/model";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { scans, users } from "@/src/db/schema";
@@ -148,7 +149,7 @@ export async function buildDoctorScanReportPayload(
   const detectionRegions = parseScanDetectionRegions(row.scores);
   const wrinkleLines = parseScanWrinkleLines(row.scores);
   const metrics = scanDisplayMetricsFromRow(row);
-  const proxyRegions = ensureScarsAndUnderEyeProxyRegions(
+  const proxyRegions = isStaffScored(row.scores) ? [] : ensureScarsAndUnderEyeProxyRegions(
     parseScanProxyRegions(row.scores),
     {
       acne_scars:

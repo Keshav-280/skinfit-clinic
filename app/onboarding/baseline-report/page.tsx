@@ -44,7 +44,7 @@ export default function OnboardingBaselineReportPage() {
           <p className="text-sm leading-relaxed text-[#6B7280]">
             {scanId
               ? "Your kAI baseline scan is saved. You can open the full report from Treatment History anytime."
-              : "Our skin team reviews every scan. Your report will be ready within 24 hours, and we will message you in the app."}
+              : "Our skin team reviews every scan. Your report will be ready within 48 hours, and we will message you in the app."}
             {questionnaireDone === false
               ? " Would you like to answer a few quick questions now? They help kAI tailor your advice."
               : ""}

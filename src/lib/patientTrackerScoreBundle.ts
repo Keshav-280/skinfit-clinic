@@ -1,3 +1,4 @@
+import { comparableScanCondition } from "@/src/lib/staffReview/sql";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { isSameWeek, subDays } from "date-fns";
 import { db } from "@/src/db/client";
@@ -83,7 +84,8 @@ export async function computePatientTrackerScoreBundle(input: {
     .where(
       and(
         eq(scans.userId, userId),
-        sql`(${scans.createdAt} < ${scanRow.createdAt} OR (${scans.createdAt} = ${scanRow.createdAt} AND ${scans.id} < ${scanId}))`
+        sql`(${scans.createdAt} < ${scanRow.createdAt} OR (${scans.createdAt} = ${scanRow.createdAt} AND ${scans.id} < ${scanId}))`,
+        comparableScanCondition(scanRow.scores)
       )
     )
     .orderBy(desc(scans.createdAt), desc(scans.id))
@@ -92,7 +94,7 @@ export async function computePatientTrackerScoreBundle(input: {
   const [firstScan] = await db
     .select({ id: scans.id })
     .from(scans)
-    .where(eq(scans.userId, userId))
+    .where(and(eq(scans.userId, userId), comparableScanCondition(scanRow.scores)))
     .orderBy(asc(scans.createdAt), asc(scans.id))
     .limit(1);
 
@@ -109,7 +111,7 @@ export async function computePatientTrackerScoreBundle(input: {
       texture: scans.texture,
     })
     .from(scans)
-    .where(eq(scans.userId, userId))
+    .where(and(eq(scans.userId, userId), comparableScanCondition(scanRow.scores)))
     .orderBy(asc(scans.createdAt), asc(scans.id));
 
   const currentVals = ragParamValuesFromScanRow({

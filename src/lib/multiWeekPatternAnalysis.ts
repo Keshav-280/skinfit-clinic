@@ -5,6 +5,7 @@
  * a fact when there's enough data to defend it; otherwise it returns null so
  * callers fall back to existing copy instead of fabricating a claim.
  */
+import { comparableScans } from "@/src/lib/staffReview/model";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import { scans, wellnessCheckins } from "@/src/db/schema";
@@ -72,7 +73,7 @@ async function loadScanPoints(userId: string): Promise<ScanPoint[]> {
     .where(eq(scans.userId, userId))
     .orderBy(asc(scans.createdAt), asc(scans.id));
 
-  return rows.map((r) => ({
+  return comparableScans(rows.at(-1)?.scores, rows).map((r) => ({
     id: r.id,
     createdAt: r.createdAt,
     kai: kaiScoreFromScanRow(r),

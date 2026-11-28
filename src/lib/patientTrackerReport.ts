@@ -1,3 +1,4 @@
+import { comparableScanCondition } from "@/src/lib/staffReview/sql";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import { scans } from "@/src/db/schema";
@@ -64,7 +65,8 @@ export async function buildPatientTrackerReport(input: {
     .where(
       and(
         eq(scans.userId, userId),
-        sql`(${scans.createdAt} < ${scanRow.createdAt} OR (${scans.createdAt} = ${scanRow.createdAt} AND ${scans.id} < ${scanId}))`
+        sql`(${scans.createdAt} < ${scanRow.createdAt} OR (${scans.createdAt} = ${scanRow.createdAt} AND ${scans.id} < ${scanId}))`,
+        comparableScanCondition(scanRow.scores)
       )
     )
     .orderBy(desc(scans.createdAt), desc(scans.id))
@@ -73,7 +75,7 @@ export async function buildPatientTrackerReport(input: {
   const scanHistory = await db
     .select({ id: scans.id, createdAt: scans.createdAt })
     .from(scans)
-    .where(eq(scans.userId, userId))
+    .where(and(eq(scans.userId, userId), comparableScanCondition(scanRow.scores)))
     .orderBy(asc(scans.createdAt), asc(scans.id));
 
   const scansUpToCurrent = scanHistory.filter(

@@ -1,3 +1,4 @@
+import { comparableScans } from "@/src/lib/staffReview/model";
 import { asc, eq } from "drizzle-orm";
 import { startOfDay } from "date-fns";
 // Worker-safe client: this runs inside the ml-worker, where "@/src/db" (server-only) would crash.
@@ -41,7 +42,8 @@ export async function loadReportScoreHistory(
     .orderBy(asc(scans.createdAt), asc(scans.id));
 
   const dayStart = startOfDay(current.createdAt).getTime();
-  const relevant = rows.filter(
+  const currentScores = rows.find((r) => r.id === current.id)?.scores;
+  const relevant = comparableScans(currentScores, rows).filter(
     (r) => r.id === current.id || r.createdAt.getTime() < dayStart
   );
 

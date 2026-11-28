@@ -1,3 +1,4 @@
+import { comparableScans } from "@/src/lib/staffReview/model";
 import { NextResponse } from "next/server";
 import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { subDays } from "date-fns";
@@ -319,7 +320,7 @@ async function buildPatientHomePayload(
     : skinScanRows[0]?.skinScore ?? 0;
 
   const { weeklyDeltaScore, weeklyDeltaMeaningful } = computeHomeWeeklyDeltaScore(
-    recentScansForMetrics,
+    comparableScans(latestScan?.scores, recentScansForMetrics),
     todayDateOnly
   );
 

@@ -23,7 +23,7 @@ export default async function ClinicOpsPage() {
     <>
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 pt-3">
         <Link
-          href="/clinic/ops/reviews"
+          href="/skin-review"
           className="rounded-xl bg-[#1E1B31] px-4 py-2.5 text-sm font-bold text-white"
         >
           Scan reviews: {reviews.waiting} waiting

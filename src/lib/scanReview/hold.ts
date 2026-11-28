@@ -30,6 +30,10 @@ const STATEMENTS = [
     reviewed_by uuid REFERENCES users(id) ON DELETE SET NULL,
     reviewed_at timestamptz
   )`,
+  // Marking screen work, the submitted staff result, and who sent it.
+  `ALTER TABLE scan_reviews ADD COLUMN IF NOT EXISTS draft jsonb`,
+  `ALTER TABLE scan_reviews ADD COLUMN IF NOT EXISTS submitted jsonb`,
+  `ALTER TABLE scan_reviews ADD COLUMN IF NOT EXISTS reviewer varchar(80)`,
   `CREATE INDEX IF NOT EXISTS scan_reviews_status_idx ON scan_reviews (status, captured_at)`,
   `CREATE INDEX IF NOT EXISTS scan_reviews_user_idx ON scan_reviews (user_id, captured_at DESC)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS scan_reviews_job_uidx ON scan_reviews (job_id) WHERE job_id IS NOT NULL`,

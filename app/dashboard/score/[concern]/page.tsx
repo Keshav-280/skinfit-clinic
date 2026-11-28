@@ -1,3 +1,4 @@
+import { comparableScans } from "@/src/lib/staffReview/model";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
@@ -83,8 +84,9 @@ export default async function ScoreConcernPage({ params }: PageProps) {
     (user?.clinicVisitedAt ?? null) != null
   );
 
-  const latestScan = history[0] ?? null;
-  const previousScan = history[1] ?? null;
+  const comparable = comparableScans(history[0]?.scores, history);
+  const latestScan = comparable[0] ?? null;
+  const previousScan = comparable[1] ?? null;
 
   const currentRaw = latestScan
     ? concernRawScore(slug, latestScan)
@@ -97,7 +99,7 @@ export default async function ScoreConcernPage({ params }: PageProps) {
   const gradeInfo =
     currentRaw != null ? classifySkinParamMetric(currentRaw) : null;
 
-  const chartPoints = [...history]
+  const chartPoints = [...comparable]
     .reverse()
     .map((scan) => {
       const raw = concernRawScore(slug, scan);

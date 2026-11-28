@@ -1,3 +1,6 @@
+import { isStaffScored } from "@/src/lib/staffReview/model";
+import { ClinicReviewNote } from "@/components/report/ClinicReviewNote";
+import { comparableScanCondition } from "@/src/lib/staffReview/sql";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, desc, eq, lt } from "drizzle-orm";
 import { format, startOfDay } from "date-fns";
@@ -174,6 +177,8 @@ function faceMapProxyRegions(
     texture?: number;
   }
 ) {
+  // Staff-scored scans show only what staff drew: no automatic zones.
+  if (isStaffScored(scores)) return [];
   const scarsSeverity =
     typeof clinical?.acne_scars === "number" && Number.isFinite(clinical.acne_scars)
       ? clinical.acne_scars
@@ -263,7 +268,8 @@ export default async function KaiScanReportPage({
     db.query.scans.findFirst({
       where: and(
         eq(scans.userId, userId),
-        lt(scans.createdAt, startOfDay(row.createdAt))
+        lt(scans.createdAt, startOfDay(row.createdAt)),
+        comparableScanCondition(row.scores)
       ),
       orderBy: [desc(scans.createdAt), desc(scans.id)],
       columns: { id: true },
@@ -332,6 +338,8 @@ export default async function KaiScanReportPage({
     const position = gradeInfo.position;
 
     return (
+      <>
+      <ClinicReviewNote scores={row.scores} />
       <InitialKaiScanReport
         aiPending={!llm}
         scanId={row.id}
@@ -362,13 +370,14 @@ export default async function KaiScanReportPage({
         isExistingPatient={scoresUnlocked}
         doctorName={doctorName}
       />
+      </>
     );
   }
 
   // ── Update Report ───────────────────────────────────────────────
   const [allScans, recentEvent, multiWeekInsights, scoreHistory] = await Promise.all([
     db.query.scans.findMany({
-      where: eq(scans.userId, userId),
+      where: and(eq(scans.userId, userId), comparableScanCondition(row.scores)),
       orderBy: [asc(scans.createdAt), asc(scans.id)],
       columns: { id: true, createdAt: true },
     }),
@@ -514,6 +523,8 @@ export default async function KaiScanReportPage({
     formatShareLine(weekNumber, score100, mvKind, topConcern);
 
   return (
+    <>
+    <ClinicReviewNote scores={row.scores} />
     <UpdateKaiScanReport
       scanId={row.id}
       grade={score100}
@@ -564,5 +575,6 @@ export default async function KaiScanReportPage({
       aiUnavailable={aiUnavailable || !llm}
       shareLine={shareLine}
     />
+    </>
   );
 }

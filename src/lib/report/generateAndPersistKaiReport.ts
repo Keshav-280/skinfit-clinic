@@ -1,3 +1,5 @@
+import { clinicMarks } from "@/src/lib/staffReview/reportInput";
+import { comparableScanCondition } from "@/src/lib/staffReview/sql";
 import { and, asc, desc, eq, lt } from "drizzle-orm";
 import { focusParamMovement } from "@/src/lib/report/buildMovementGroups";
 import { loadReportScoreHistory } from "@/src/lib/report/reportScoreHistory";
@@ -89,7 +91,8 @@ export async function generateAndPersistKaiReport(
     db.query.scans.findFirst({
       where: and(
         eq(scans.userId, userId),
-        lt(scans.createdAt, startOfDay(row.createdAt))
+        lt(scans.createdAt, startOfDay(row.createdAt)),
+        comparableScanCondition(row.scores)
       ),
       orderBy: [desc(scans.createdAt), desc(scans.id)],
       columns: { id: true },
@@ -163,6 +166,7 @@ export async function generateAndPersistKaiReport(
       },
       weekly_checkin: wellness,
       capture_quality: captureQualityForReport(row.scores) ?? null,
+      ...clinicMarks(row.scores),
       environment,
       focus_parameters: paramRows.map((p) => ({
         key: p.key,
@@ -177,7 +181,7 @@ export async function generateAndPersistKaiReport(
     kind = "update";
     const [allScans, recentEvent, scoreHistory] = await Promise.all([
       db.query.scans.findMany({
-        where: eq(scans.userId, userId),
+        where: and(eq(scans.userId, userId), comparableScanCondition(row.scores)),
         orderBy: [asc(scans.createdAt), asc(scans.id)],
         columns: { id: true },
       }),
@@ -241,6 +245,7 @@ export async function generateAndPersistKaiReport(
       },
       weekly_checkin: wellness,
       capture_quality: captureQualityForReport(row.scores) ?? null,
+      ...clinicMarks(row.scores),
       capture_state: captureStateOf(captureQualityForReport(row.scores)),
       history_patterns: (await computeMultiWeekInsights(userId)).map((i) => plainWords(i.text)),
       dipped_two_reports_in_a_row: areasDippedTwice(scoreHistory.byReportKey),

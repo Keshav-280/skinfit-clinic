@@ -1270,16 +1270,43 @@
     },
     {
       "id": "SCAN-REVIEW-HOLD",
-      "title": "App scans are not shown to the patient (scores, markings, report) until staff approve them in Ops; staff may hide markings or ask for a retake; the patient is told it takes up to 24 hours",
-      "source": "26 Nov: 'instead of giving direct AI results... give the user report after 24 hours, and it will be reviewed by us in the ops portal'; chose release on approval, approve or retake",
+      "title": "App scans are not shown to the patient until staff score all six areas and submit in the skin review pages (or ask for a retake); the patient is told it takes up to 48 hours",
+      "source": "26-28 Nov: report after review; 28 Nov: 'let's go for 48 hours for the initial testing phase'",
       "checks": [
-        { "type": "present", "file": "src/lib/scanPipeline/processScanJob.ts", "pattern": "holdScanForReview" },
-        { "type": "present", "file": "app/api/mobile-capture/submit/route.ts", "pattern": "holdScanForReview" },
-        { "type": "present", "file": "app/api/scan/route.ts", "pattern": "holdScanForReview" },
-        { "type": "present", "file": "src/lib/scanReview/review.ts", "pattern": "approveScanReview" },
-        { "type": "present", "file": "app/dashboard/layout.tsx", "pattern": "ScanReviewBanner" },
-        { "type": "present", "file": "app/api/clinic/scan-reviews/[id]/route.ts", "pattern": "getDoctorPortalUserId" },
-        { "type": "manual", "how": "After deploy: take one app scan, confirm nothing appears for the patient, approve it in Ops, confirm the report and the app message appear." }
+        {
+          "type": "present",
+          "file": "src/lib/scanPipeline/processScanJob.ts",
+          "pattern": "holdScanForReview"
+        },
+        {
+          "type": "present",
+          "file": "app/api/mobile-capture/submit/route.ts",
+          "pattern": "holdScanForReview"
+        },
+        {
+          "type": "present",
+          "file": "app/api/scan/route.ts",
+          "pattern": "holdScanForReview"
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/layout.tsx",
+          "pattern": "ScanReviewBanner"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/scanReview/review.ts",
+          "pattern": "submitStaffReview"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/staffReview/model.ts",
+          "pattern": "REVIEW_HOURS = 48"
+        },
+        {
+          "type": "manual",
+          "how": "After deploy: take one app scan, confirm nothing appears for the patient, mark and score it at /skin-review, submit, confirm exact scores, marked photos, note and report appear."
+        }
       ]
     },
     {
@@ -1292,6 +1319,47 @@
         { "type": "present", "file": "app/api/clinic-dev/doctor-chat/route.ts", "pattern": "requireStaff" },
         { "type": "present", "file": "app/api/clinic-dev/parameters/route.ts", "pattern": "requireStaff" },
         { "type": "present", "file": "app/api/analyze-skin/route.ts", "pattern": "requireStaff" }
+      ]
+    },
+    {
+      "id": "STAFF-SCORES",
+      "title": "Scores and markings come only from staff (AI score is a reference for staff); patients see exactly the staff numbers, overall = average of six; AI writes only the text; staff-scored scans are never compared with old AI scores; one separate login for the review pages with the password only on the server",
+      "source": "28 Nov: 'AI but it will not have scores and annotations, those will come solely from staff'; 'show the exact scores'; 'separate portal'; 'common login'",
+      "checks": [
+        {
+          "type": "present",
+          "file": "src/lib/ragScanParamBridge.ts",
+          "pattern": "readStaffReview"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/staffReview/build.ts",
+          "pattern": "aiSummary: null"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/report/reportScoreHistory.ts",
+          "pattern": "comparableScans"
+        },
+        {
+          "type": "present",
+          "file": "app/dashboard/scans/[scanId]/report/page.tsx",
+          "pattern": "ClinicReviewNote"
+        },
+        {
+          "type": "present",
+          "file": "src/lib/skinReview/auth.ts",
+          "pattern": "SKIN_REVIEW_PASSWORD"
+        },
+        {
+          "type": "present",
+          "file": "public/skin-review-tool.html",
+          "pattern": "Confirm"
+        },
+        {
+          "type": "test",
+          "file": "src/lib/staffReview/model.test.ts"
+        }
       ]
     }
   ]

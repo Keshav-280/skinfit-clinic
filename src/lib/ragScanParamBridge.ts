@@ -1,3 +1,4 @@
+import { readStaffReview } from "@/src/lib/staffReview/model";
 import {
   RAG_KAI_ALL_PARAM_KEYS,
   type RagKaiParamKey,
@@ -87,6 +88,10 @@ export function mergeRagParamValuesFromScan(input: {
   hydrationColumn?: number;
   textureColumn?: number;
 }): Partial<Record<RagKaiParamKey, number>> {
+  // Scored by clinic staff: exactly their numbers, with no model curve, limit or fallback.
+  const staff = readStaffReview(input.scoresJson);
+  if (staff) return { ...staff.scores };
+
   const out: Partial<Record<RagKaiParamKey, number>> = {};
 
   for (const key of RAG_KAI_ALL_PARAM_KEYS) {
